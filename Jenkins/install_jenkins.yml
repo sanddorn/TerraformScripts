@@ -1,0 +1,56 @@
+- hosts: all
+  tasks:
+    - name: install prerequisites
+      become: yes
+      apt:
+        update_cache: yes
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - gnupg-agent
+          - software-properties-common
+          - openjdk-11-jdk-headless
+    - name: install jenkins key
+      become: yes
+      apt_key:
+        url: https://pkg.jenkins.io/debian/jenkins-ci.org.key
+    - name: install jenkins deb source
+      become: yes
+      apt_repository:
+        repo: "deb http://pkg.jenkins.io/debian-stable binary/"
+        filename: jenkins
+        state: present
+    - name: install docker key
+      become: yes
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+    - name: install docker deb source
+      become: yes
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+        filename: docker
+        state: present
+    - name: install deb packages
+      become: yes
+      apt:
+        update_cache: yes
+        name:
+        - docker
+        - jenkins
+    - name: Add jenkins into docker group
+      become: yes
+      user:
+        name: jenkins
+        groups: jenkins, docker
+    - name: set mountpoint for volume
+      become: yes
+      mount:
+        path: /var/lib/jenkins
+        src: /dev/sdb
+        fstype: ext4
+        opts: discard,nofail,defaults
+        state: present
+    - name: delayed reboot for getting terraform ready
+      become: yes
+      shell:
+        cmd: shutdown -r +1
