@@ -10,6 +10,7 @@
           - gnupg-agent
           - software-properties-common
           - openjdk-11-jdk-headless
+          - chromium-chromedriver
     - name: install jenkins key
       become: yes
       apt_key:
