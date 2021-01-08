@@ -1,0 +1,110 @@
+- hosts: all
+  tasks:
+    - name: set mountpoint for volume
+      become: yes
+      mount:
+        path: /var/git
+        src: /dev/sdb
+        fstype: ext4
+        opts: discard,nofail,defaults
+        state: mounted
+    - name: create user
+      become: yes
+      user:
+        name: git
+        comment: Herr Git
+        home: /var/git
+    - name: set owner
+      become: yes
+      file:
+        path: /var/git
+        owner: git
+        group: git
+        recurse: yes
+    - name: install prerequisites
+      become: yes
+      apt:
+        update_cache: yes
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - gnupg-agent
+          - software-properties-common
+          - postgresql
+          - git
+          - nginx
+          - python3-psycopg2
+    - name: load gogs
+      become: yes
+      get_url:
+        url: https://github.com/gogs/gogs/releases/download/v0.11.91/linux_amd64.tar.gz
+        dest: /root/gogs.tar.gz
+    - name: unpack gogs
+      become: yes
+      unarchive:
+        remote_src: yes
+        src: /root/gogs.tar.gz
+        dest: /var/git/
+        owner: git
+        group: git
+    - name: create gogs user
+      become: yes
+      become_user: postgres
+      postgresql_user:
+        name: 'gogs'
+        password: "{{ gogs_password }}"
+    - name: create gogs database
+      become: yes
+      become_user: postgres
+      postgresql_db:
+        name: gogs
+        owner: gogs
+    - name: configure NGINX
+      template:
+        src: templates/nginx_virtualhost.conf
+        dest: /etc/nginx/sites-available/gogs.conf
+    - name: set symling to gogs config in NGINX
+      file:
+        state: link
+        src: /etc/nginx/sites-available/gogs.conf
+        dest: /etc/nginx/sites-enabled/gogs.conf
+    - name: configure app.ini for gogs
+      template:
+        src: templates/gogs.ini
+        dest: /var/git/gogs/app.ini
+    - name: create gogs service
+      import_role:
+        name: cimon-io.systemd-service
+      vars:
+        systemd_service:
+          # Service name
+          gogs:
+            # Start the service on boot
+            enabled: Yes
+            # Commands that are executed before `exec_start` commands
+            # Execute the command with specified arguments when the service is started
+            exec_start: "/var/git/gogs/gogs web --config /var/git/gogs/app.ini"
+            # Use the specified directory as current
+            working_directory: "/var/git/gogs"
+            # Run the processes under this user and group
+            user: git
+            group: git
+            # Restart the service only when a clean exit code or signal wasn't gotten
+            restart: "always"
+            # Activate 'docker' or stop working in case of failure
+            requires: "postgres.service"
+            # to avoid race conditions
+            after: "syslog.target network.target postgres.service"
+            timeout_sec: 600s
+            # multi-user.target unit prefers the service to be run
+            wanted_by: "multi-user.target"
+            Environment: "USER=git HOME=/var/git"
+    - name: delayed reboot for getting terraform ready
+      become: yes
+      shell:
+        cmd: shutdown -r +1
+
+
+
+
+
