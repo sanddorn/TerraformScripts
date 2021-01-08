@@ -31,6 +31,16 @@
         repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
         filename: docker
         state: present
+    - name: install aquasec key
+      become: yes
+      apt_key:
+        url: https://aquasecurity.github.io/trivy-repo/deb/public.key
+    - name: install aquasec deb source
+      become: yes
+      apt_repository:
+        repo: "deb [arch=amd64]  https://aquasecurity.github.io/trivy-repo/deb {{ ansible_lsb.codename }} main "
+        filename: aquasec
+        state: present
     - name: install deb packages
       become: yes
       apt:
@@ -38,6 +48,7 @@
         name:
         - docker
         - jenkins
+        - trivy
     - name: Add jenkins into docker group
       become: yes
       user:
