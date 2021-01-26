@@ -1,0 +1,126 @@
+---
+- name: Include OS specific variable
+  include_vars:
+    file: "{{ ansible_os_family }}.yml"
+
+- include: "{{ ansible_os_family }}.yml"
+
+- name: Setup JENKINS_HOME
+  lineinfile:
+    path: "{{ jenkins_global_config_path }}"
+    regexp: '^JENKINS_HOME='
+    line: 'JENKINS_HOME={{ jenkins_home }}'
+  notify: restart jenkins
+
+- name: Setup Jenkins HTTP port
+  lineinfile:
+    path: "{{ jenkins_global_config_path }}"
+    regexp: '^{{ http_port_config_key }}='
+    line: '{{ http_port_config_key }}={{ jenkins_http_port }}'
+  notify: restart jenkins
+
+- name: Setup Java Args / Options
+  lineinfile:
+    path: "{{ jenkins_global_config_path }}"
+    regexp: '^{{ java_options_config_key }}='
+    line: '{{ java_options_config_key }}="-Xmx2048m -Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"'
+  notify: restart jenkins
+
+- name: create jenkins home folder
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+  with_items:
+    - "{{ jenkins_home }}"
+    - "{{ jenkins_home }}/init.groovy.d"
+
+- name: setup admin user
+  template:
+    src: init.groovy.d/99-setup-admin-user.groovy.j2
+    dest: "{{ jenkins_home }}/init.groovy.d/99-setup-admin-user.groovy"
+    owner: jenkins
+    group: jenkins
+
+# This is a workaround for the Ansible module jenkins_plugins, that is a little bit buggy see also Ansible issues #37704
+# and  #24864
+- name: install plugins
+  template:
+    src: init.groovy.d/99-install-plugin.groovy.j2
+    dest: "{{ jenkins_home }}/init.groovy.d/99-install-plugin.groovy"
+    owner: jenkins
+    group: jenkins
+  register: plugin_result
+
+- name: copy jenkins configuration as code
+  template:
+    src: "jenkins/jenkins-config.yaml.j2"
+    dest: "{{ jenkins_home }}/jenkins.yaml"
+    owner: jenkins
+    group: jenkins
+    lstrip_blocks: true
+  register: cac_result
+
+- name: copy jenkins seed jobs
+  copy:
+    src: "{{ jenkins_seed_jobs_path }}"
+    dest: "{{ jenkins_home }}"
+    owner: jenkins
+    group: jenkins
+  when: jenkins_seed_jobs_path is defined
+  register: seed_job_result
+
+- name: start jenkins service
+  service:
+    name: jenkins
+    enabled: true
+    state: restarted
+  when: seed_job_result.changed or
+        cac_result.changed or
+        plugin_result.changed
+
+- name: Wait for Jenkins to start up
+  uri:
+    url: "http://localhost:{{ jenkins_http_port }}"
+    status_code:
+      - 200
+      - 403
+    timeout: 5
+  register: jenkins_service_status
+  # Keep trying for 10 mins in 5 sec intervals
+  retries: 120
+  delay: 5
+  until: >
+     'status' in jenkins_service_status and
+     jenkins_service_status['status'] == 200 or
+     jenkins_service_status['status'] == 403
+
+- name: copy init jenkins Scripts
+  copy:
+    src: init.groovy.d/
+    dest: "{{ jenkins_home }}/init.groovy.d/"
+    owner: jenkins
+    group: jenkins
+  notify: restart jenkins
+
+- name: copy customize init jenkins Scripts
+  copy:
+    src: "{{ jenkins_custom_init_scripts }}"
+    dest: "{{ jenkins_home }}/init.groovy.d/"
+    owner: jenkins
+    group: jenkins
+  when: jenkins_custom_init_scripts is defined
+  notify: restart jenkins
+
+- name: copy user content
+  copy:
+    src: "{{ jenkins_custom_user_content }}"
+    dest: "{{ jenkins_home }}/userContent/"
+    owner: jenkins
+    group: jenkins
+  when: jenkins_custom_user_content is defined
+  notify: restart jenkins
+
+- include: create_prerequisites_for_terraform_slaves.yml
+  when: jenkins_terraform_path is defined

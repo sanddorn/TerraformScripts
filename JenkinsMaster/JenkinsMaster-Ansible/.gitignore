@@ -1,0 +1,9 @@
+.vagrant
+*.retry
+__pycache__/
+*.iml
+.idea/
+.idea/
+*.iml
+vars/jenkins-secret.yaml
+

@@ -1,0 +1,15 @@
+---
+- name: install packages
+  apt:
+    name:
+      - git
+      - xvfb
+      - x11-xserver-utils
+      - cifs-utils
+      - unzip
+      - libaio1
+      - xmlstarlet
+      - jq
+    update_cache: yes
+  become_method: sudo
+  become: true

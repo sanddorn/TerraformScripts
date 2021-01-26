@@ -1,0 +1,73 @@
+# todo and not realize as local action replace by https://docs.ansible.com/ansible/devel/modules/openssh_keypair_module.html for ansible 2.8
+- name: Generate SSH key for slaves
+  local_action: command ssh-keygen -q -f /tmp/id_rsa -N ''
+  args:
+    creates: /tmp/id_rsa
+  become: false
+
+# todo must be replace see above comment
+- name: create jenkins ssh folder
+  file:
+    path: "/var/lib/jenkins/.ssh"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    recurse: true
+
+# todo must be replace see above comment
+- name: copy ssh keys to master
+  copy:
+    src: "/tmp/{{ item }}"
+    dest: "/var/lib/jenkins/.ssh/{{ item }}"
+    owner: jenkins
+    group: jenkins
+    mode: 0400
+  loop:
+    - id_rsa
+    - id_rsa.pub
+
+- name: Download terraform
+  get_url:
+    url: "https://releases.hashicorp.com/terraform/0.14.5/terraform_0.14.5_linux_amd64.zip"
+    dest: "/tmp/"
+
+- name: Unpack terraform
+  unarchive:
+    dest: /usr/bin
+    src: /tmp/terraform_0.14.5_linux_amd64.zip
+    remote_src: yes
+    mode: 0755
+
+- name: create terraform-dir
+  file:
+    dest: "{{ jenkins_home }}/terraform"
+    mode: 0755
+    owner: jenkins
+    state: directory
+
+- name: install start script
+  template:
+    src: "jenkins/startAgent.sh.j2"
+    dest: "{{ jenkins_home }}/terraform/startAgent.sh"
+    mode: 0755
+
+- name: install terraform script
+  copy:
+   src: "{{ jenkins_terraform_path }}"
+   dest: "{{ jenkins_home }}"
+
+- name: create terraform token file
+  copy:
+    dest: "{{ jenkins_home }}/terraform/token"
+    content: "{{ jenkins_terraform_api_token }}"
+
+- name: Create Jenkins SSH-Key on Terraform Host.
+  terraform:
+    project_path: "{{ jenkins_home }}/tf_create_ssh_pkey"
+    state: present
+    force_init: true
+    variables:
+      hcloud_token: "{{ jenkins_terraform_api_token }}"
+      jenkins_ssh_pkey: "{{ lookup('file', '/tmp/id_rsa.pub') }}"
+      jenkins_key_name: "jenkins@{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+  ignore_errors: True

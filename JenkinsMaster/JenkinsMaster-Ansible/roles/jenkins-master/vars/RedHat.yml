@@ -1,0 +1,4 @@
+---
+jenkins_global_config_path: /etc/sysconfig/jenkins
+http_port_config_key: "JENKINS_PORT"
+java_options_config_key: "JENKINS_JAVA_OPTIONS"

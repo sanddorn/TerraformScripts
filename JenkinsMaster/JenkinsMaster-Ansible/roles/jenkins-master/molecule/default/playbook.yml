@@ -1,0 +1,7 @@
+---
+- name: Converge
+  become: true
+  become_method: sudo
+  hosts: all
+  roles:
+    - role: jenkins

@@ -1,3 +1,12 @@
+## Dependencies
+terraform {
+  required_providers {
+    hcloud = {
+      source = "hetznercloud/hcloud"
+      version = "~>1.24.0"
+    }
+  }
+}
 variable "hcloud_token" {
   type = string
   description = "Token to the Hetzner Cloud API"
@@ -10,10 +19,6 @@ variable "ssh_key_deployment_user" {
   type = string
   description = "SSH public key to provision on the cloud server for the user"
 }
-variable "jenkins_volume" {
-  type = number
-  description = "Volume to mount to the server. Must be configured as /var/lib/jenkins."
-}
 
 variable "ssh_root_key_selector" {
   type = string
@@ -24,27 +29,17 @@ provider "hcloud" {
   token = var.hcloud_token
 }
 
-data "hcloud_volume" "jenkins_volume" {
-  id = var.jenkins_volume
-}
-
 data "hcloud_ssh_keys" "ssh_root_keys" {
    with_selector = var.ssh_root_key_selector
 }
 
-resource "hcloud_volume_attachment" "jenkins_volume_attachment" {
-  volume_id = var.jenkins_volume
-  server_id = hcloud_server.jenkins.id
-  automount = false
-}
-
 resource "hcloud_server" "jenkins" {
   name = "jenkins"
-  image = "ubuntu-18.04"
+  image = "ubuntu-20.04"
   server_type = "cx11"
   location = "nbg1"
 
-  ssh_keys = ssh_root_keys
+  ssh_keys = data.hcloud_ssh_keys.ssh_root_keys.ssh_keys.*.name
 
   provisioner "remote-exec" {
     inline = [
@@ -77,7 +72,7 @@ resource "hcloud_server" "jenkins" {
   }
 
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${self.ipv4_address},' -e ansible_user=${var.username} install_jenkins.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${self.ipv4_address},' -e ansible_user=${var.username} JenkinsMaster-Ansible/setup-jenkins.yml"
   }
 }
 

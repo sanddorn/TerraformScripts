@@ -1,0 +1,11 @@
+groovy:
+  - script: |
+      import org.jenkinsci.plugins.scriptsecurity.scripts.*
+      ScriptApproval scriptApproval = ScriptApproval.get()
+      scriptApproval.clearApprovedSignatures()
+      [
+        "0f43065189b3d05e8816fe9129dc799e0b2b986b"
+      ].each { hash ->
+                  scriptApproval.approveScript(hash)
+              }
+      scriptApproval.save()

@@ -1,0 +1,13 @@
+- hosts: all
+  vars_files:
+    - vars/jenkins.yml
+    - vars/jenkins-secret.yaml
+    - vars/{{ ansible_os_family }}.yml
+  tasks:
+    - include: "includes/jenkins-basic.yml"
+    - import_role:
+        name: jenkins-master
+      become_method: sudo
+      become: true
+
+

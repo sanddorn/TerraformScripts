@@ -1,0 +1,4 @@
+- include: "{{ ansible_os_family }}.yml"
+
+- name: add user to docker group
+  user: name={{ docker_user }} groups=docker state=present append=yes

@@ -1,0 +1,8 @@
+---
+jenkins_home: "/opt/jenkins"
+jenkins_http_port: "8080"
+
+jenkins_admin_username: admin
+jenkins_admin_password: admin123
+
+jenkins_plugins: []

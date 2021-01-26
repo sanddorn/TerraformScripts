@@ -1,0 +1,57 @@
+jenkins_home: "/opt/jenkins"
+jenkins_http_port: "8083"
+
+jenkins_admin_password: admin123
+jenkins_admin_username: admin
+
+# Copy additional init scripts (given folder must exist)
+#jenkins_custom_init_scripts: "files/jenkins/init.groovy.d/"
+
+# Copy additional user content (given folder must exist)
+#jenkins_custom_user_content: "files/jenkins/userContent/"
+
+jenkins_configuration_as_code_template: templates/jenkins/further-jenkins-config.yaml.j2
+
+jenkins_seed_jobs_path: files/jenkins/
+
+jenkins_terraform_path: files/terraform/
+
+jenkins_plugins: "git
+                  git-client
+                  gitlab-plugin
+                  ansible
+                  build-monitor-plugin
+                  ws-cleanup
+                   junit
+                   jacoco
+                   docker-workflow
+                   golang
+                   nodejs
+                   pipeline-maven
+                   pipeline-npm
+                   sonar
+                   workflow-aggregator
+                   mailer
+                   email-ext
+                   job-dsl
+                   ssh-slaves
+                   ssh-agent
+                   configuration-as-code
+                   configuration-as-code-support
+                   configuration-as-code-groovy
+                   ldap
+                   pipeline-utility-steps
+                   ssh-agent
+                   startup-trigger-plugin
+                   timestamper
+                   copyartifact
+                   nexus-jenkins-plugin
+                   slack
+                   keycloak"
+
+jenkins_user_name: "Herr Jenkins"
+jenkins_user_email: "jenkins@bermuda.de"
+
+jenkins_keycloak_realm: "Development"
+jenkins_keycloak_auth_url: "https://sso.bermuda.de/auth"
+

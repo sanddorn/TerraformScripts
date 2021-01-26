@@ -1,0 +1,46 @@
+#!groovy
+import hudson.model.*
+import hudson.security.*
+import jenkins.model.*
+import java.util.logging.Logger
+
+def logger = Logger.getLogger("")
+def jenkins = Jenkins.instance
+
+def updateCenter = jenkins.updateCenter
+updateCenter.sites.each { it.updateDirectlyNow(DownloadService.signatureCheck) }
+
+DownloadService.Downloadable.all().each { it.updateNow() }
+
+def restartNeeded = false
+
+def installedPlugins = jenkins.getPluginManager().activePlugins
+
+// Update installed plugins
+installedPlugins.findAll { it.hasUpdate() }.each {
+  logger.info("Updating plugin ${it.shortName}")
+  updateCenter.getPlugin(it.shortName).deploy().get()
+  restartNeeded = true
+}
+
+// Install missing plugins
+def pluginsToInstall = "{{ jenkins_plugins }}".split(/\s+/)
+pluginsToInstall.each { pluginToInstall ->
+
+  def installed = installedPlugins.any { it.shortName == pluginToInstall }
+  if (!installed) {
+    logger.info "Installing plugin $pluginToInstall"
+    def pluginFromUpdateSite = updateCenter.getPlugin(pluginToInstall)
+    if (pluginFromUpdateSite != null) {
+      pluginFromUpdateSite.deploy().get()
+      restartNeeded = true
+    } else {
+      logger.warning("Can't install $pluginToInstall, because it wasn't found on Update Sites")
+    }
+  }
+}
+
+if (restartNeeded) {
+  logger.info "Jenkins restart"
+  jenkins.restart()
+}

@@ -1,0 +1,40 @@
+---
+- include: "{{ ansible_os_family }}.yml"
+#
+#- name: download AdoptOpenJDK11
+#  local_action: get_url url="https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.5%2B10/OpenJDK11U-jdk_x64_linux_hotspot_11.0.5_10.tar.gz" dest="/tmp/OpenJDK11-jdk.tar.gz"
+#- name: Install openjdk11
+#  unarchive: src=/tmp/OpenJDK11-jdk.tar.gz dest=/opt creates=/opt/jdk-11.0.5+10 owner=jenkins group=jenkins
+#  become_method: sudo
+#  become: true
+#
+#- name: download AdoptOpenJDK8
+#  local_action: get_url url="https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u232-b09/OpenJDK8U-jdk_x64_linux_hotspot_8u232b09.tar.gz" dest="/tmp/OpenJDK8-jdk.tar.gz"
+#- name: Install AdoptOpenJDK8
+#  unarchive: src=/tmp/OpenJDK8-jdk.tar.gz dest=/opt creates=/opt/jdk8u232-b09 owner=jenkins group=jenkins
+#  become_method: sudo
+#  become: true
+
+# TODO: configure Jenkins Git
+#- name: configure git username
+#  git_config:
+#    name: user.name
+#    scope: global
+#    value: "{{ jenkins_user_name }}"
+#  become: true
+#  become_user: jenkins
+#  become_method: sudo
+#
+#- name: configure git email
+#  git_config:
+#    name: user.email
+#    scope: global
+#    value: "{{ jenkins_user_email }}"
+#  become: true
+#  become_user: jenkins
+#  become_method: sudo
+
+#- name: determine jenkins home directory
+#  getent:
+#    database: passwd
+#    key: jenkins
