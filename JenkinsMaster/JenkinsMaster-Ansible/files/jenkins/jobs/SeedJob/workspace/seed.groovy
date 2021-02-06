@@ -67,7 +67,8 @@ String toCamelCase( String text, boolean capitalized = true ) {
 
 def createPipelineJob(def sshUrl, def projectNamespace, def projectName, def friendlyProjectName, def typeName, def jenkinsfilePath) {
     println("CreatePipeline " + projectName)
-    pipelineJob("${projectNamespace}/${typeName}${projectName}") {
+    def projectname = "${projectNamespace}/${typeName}${projectName}"
+    pipelineJob(projectname) {
         displayName("${friendlyProjectName} ${typeName}")
         definition {
             cpsScm {
@@ -88,7 +89,7 @@ def createPipelineJob(def sshUrl, def projectNamespace, def projectName, def fri
             }
         }
     }
-    queue("${typeName}${projectName}")
+    queue(projectname)
 }
 
 def void createNamespace(String projectnamespace) {

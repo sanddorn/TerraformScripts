@@ -10,6 +10,7 @@
       - libaio1
       - xmlstarlet
       - jq
+      - python3-pip
     update_cache: yes
   become_method: sudo
   become: true

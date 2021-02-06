@@ -1,0 +1,19 @@
+---
+# tasks file for dockerd
+- name: install required package
+  apt: name="{{ item }}" state=present
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - software-properties-common
+
+- name: add aquasec's official GPG key
+  apt_key: url="https://aquasecurity.github.io/trivy-repo/deb/public.key" state=present
+
+- name: add aquasec's repository
+  apt_repository: repo="deb [arch=amd64] https://aquasecurity.github.io/trivy-repo/deb focal main" update_cache=yes
+
+- name: install latest trivy engine
+  apt: name="{{ item }}" state=present
+  loop:
+    - trivy

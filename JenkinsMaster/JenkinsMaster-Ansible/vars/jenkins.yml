@@ -1,8 +1,9 @@
 jenkins_home: "/opt/jenkins"
-jenkins_http_port: "8083"
+jenkins_http_port: "8080"
 
 jenkins_admin_password: admin123
 jenkins_admin_username: admin
+docker_user: jenkins
 
 # Copy additional init scripts (given folder must exist)
 #jenkins_custom_init_scripts: "files/jenkins/init.groovy.d/"
@@ -47,7 +48,8 @@ jenkins_plugins: "git
                    copyartifact
                    nexus-jenkins-plugin
                    slack
-                   keycloak"
+                   keycloak
+                   prometheus"
 
 jenkins_user_name: "Herr Jenkins"
 jenkins_user_email: "jenkins@bermuda.de"

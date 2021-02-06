@@ -8,7 +8,7 @@
 # todo must be replace see above comment
 - name: create jenkins ssh folder
   file:
-    path: "/var/lib/jenkins/.ssh"
+    path: "/home/jenkins/.ssh"
     state: directory
     owner: jenkins
     group: jenkins
@@ -18,7 +18,7 @@
 - name: copy ssh keys to master
   copy:
     src: "/tmp/{{ item }}"
-    dest: "/var/lib/jenkins/.ssh/{{ item }}"
+    dest: "/home/jenkins/.ssh/{{ item }}"
     owner: jenkins
     group: jenkins
     mode: 0400

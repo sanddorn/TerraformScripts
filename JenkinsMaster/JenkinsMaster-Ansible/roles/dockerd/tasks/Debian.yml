@@ -6,14 +6,16 @@
     - apt-transport-https
     - ca-certificates
     - software-properties-common
-    - python-docker
-    - python-pip
 
 - name: add Docker's official GPG key
-  apt_key: url="http://apt.dockerproject.org/gpg" state=present
+  apt_key: url="https://download.docker.com/linux/ubuntu/gpg" state=present
 
 - name: add Docker's repository
-  apt_repository: repo="deb https://apt.dockerproject.org/repo/ ubuntu-xenial main" update_cache=yes
+  apt_repository: repo="deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable" update_cache=yes
 
 - name: install latest Docker Engine
-  apt: name="docker-ce"
+  apt: name="{{ item }}" state=present
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io

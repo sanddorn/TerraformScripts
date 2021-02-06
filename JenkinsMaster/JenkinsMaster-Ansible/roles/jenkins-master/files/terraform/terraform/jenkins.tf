@@ -70,7 +70,13 @@ resource "hcloud_server" "jenkins-slave" {
       "chmod 755 ${var.jenkins_path}",
       "chown ${var.username}:${var.username} ${var.jenkins_path}",
       "curl -o ${var.jenkins_path}/agent.jar ${var.jenkins_agent_jar_url}",
-      "apt update && apt install -y openjdk-8-jre-headless"
+      "curl https://download.docker.com/linux/ubuntu/gpg | apt-key add -",
+      "curl https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -",
+      "apt-add-repository 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main'",
+      "apt-add-repository 'deb https://download.docker.com/linux/ubuntu focal stable'",
+      "curl https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -",
+      "apt-add-repository 'https://aquasecurity.github.io/trivy-repo/deb focal main'",
+      "apt update && apt install -y git google-chrome-stable openjdk-8-jre-headless docker-ce docker-ce-cli containerd.io trivy"
     ]
 
     connection {

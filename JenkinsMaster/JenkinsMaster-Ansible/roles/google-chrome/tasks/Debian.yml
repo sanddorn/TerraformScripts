@@ -1,0 +1,19 @@
+---
+# tasks file for chrome
+- name: install required package
+  apt: name="{{ item }}" state=present
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - software-properties-common
+
+- name: add google GPG key
+  apt_key: url="https://dl.google.com/linux/linux_signing_key.pub" state=present
+
+- name: add google chrome's repository
+  apt_repository: repo="deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" update_cache=yes
+
+- name: install latest chrome
+  apt: name="{{ item }}" state=present
+  loop:
+    - google-chrome-stable
