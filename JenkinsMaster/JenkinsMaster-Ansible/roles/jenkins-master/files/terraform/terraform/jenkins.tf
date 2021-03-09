@@ -76,7 +76,9 @@ resource "hcloud_server" "jenkins-slave" {
       "apt-add-repository 'deb https://download.docker.com/linux/ubuntu focal stable'",
       "curl https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -",
       "apt-add-repository 'https://aquasecurity.github.io/trivy-repo/deb focal main'",
-      "apt update && apt install -y git google-chrome-stable openjdk-8-jre-headless docker-ce docker-ce-cli containerd.io trivy"
+      "apt update && apt install -y unzip git google-chrome-stable openjdk-8-jre-headless docker-ce docker-ce-cli containerd.io trivy python3-pip",
+      "curl -o chromedriver.zip https://chromedriver.storage.googleapis.com/89.0.4389.23/chromedriver_linux64.zip && unzip chromedriver.zip && mv chromedriver /usr/bin",
+      "adduser ${var.username} docker"
     ]
 
     connection {
