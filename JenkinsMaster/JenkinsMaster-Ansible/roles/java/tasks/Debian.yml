@@ -5,3 +5,4 @@
   apt:
     name: openjdk-8-jre-headless
     force: yes
+    update_cache: yes
