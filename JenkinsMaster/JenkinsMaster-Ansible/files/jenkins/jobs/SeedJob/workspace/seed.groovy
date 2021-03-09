@@ -34,7 +34,14 @@ for (int page = 0;; ++page) {
         def sshUrl = it.ssh_url_to_repo
         println("Found Project: " + projectName)
         try {
-            def jenkinsfiles = new URL("${gitUrl}/projects/${it.id}/repository/tree?path=Jenkinsfiles&ref=development&private_token=${privateToken}").withReader {
+            def branches = new URL("${gitUrl}/projects/${it.id}/repository/branches?private_token=${privateToken}").withReader {
+                new JsonSlurper().parse(it)
+            }
+            def defaultBranchObject = branches.find {
+                it["default"]
+            }
+            def defaultBranch = defaultBranchObject == null ? "development" : defaultBranchObject["name"]
+            def jenkinsfiles = new URL("${gitUrl}/projects/${it.id}/repository/tree?path=Jenkinsfiles&private_token=${privateToken}").withReader {
                 new JsonSlurper().parse(it)
             }
 
@@ -47,7 +54,7 @@ for (int page = 0;; ++page) {
                 println(it.name)
                 println(it.path)
                 def typeName = it.name.replace(".jf", "")
-                createPipelineJob(sshUrl, projectNamespace, projectName, friendlyProjectName, typeName, it.path)
+                createPipelineJob(sshUrl, projectNamespace, projectName, friendlyProjectName, typeName, it.path, defaultBranch)
             }
         } catch (Exception e) {
             println("Problem getting Jenkinsfiles for Project " + projectName)
@@ -65,7 +72,7 @@ String toCamelCase( String text, boolean capitalized = true ) {
     return capitalized ? text.capitalize() : text
 }
 
-def createPipelineJob(def sshUrl, def projectNamespace, def projectName, def friendlyProjectName, def typeName, def jenkinsfilePath) {
+def createPipelineJob(def sshUrl, def projectNamespace, def projectName, def friendlyProjectName, def typeName, def jenkinsfilePath, def branchname) {
     println("CreatePipeline " + projectName)
     def projectname = "${projectNamespace}/${typeName}${projectName}"
     pipelineJob(projectname) {
@@ -79,7 +86,7 @@ def createPipelineJob(def sshUrl, def projectNamespace, def projectName, def fri
                             url(sshUrl)
                             credentials("gitlab-ssh")
                         }
-                        branch("development")
+                        branch(branchname)
                         extensions {
                             wipeOutWorkspace()
                         }
