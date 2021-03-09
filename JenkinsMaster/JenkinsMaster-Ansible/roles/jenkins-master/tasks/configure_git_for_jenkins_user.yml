@@ -1,0 +1,32 @@
+---
+- name: configure git username
+  git_config:
+    name: user.name
+    scope: global
+    value: "{{ jenkins_user_name }}"
+  become: true
+  become_user: jenkins
+  become_method: sudo
+
+- name: configure git email
+  git_config:
+    name: user.email
+    scope: global
+    value: "{{ jenkins_user_email }}"
+  become: true
+  become_user: jenkins
+  become_method: sudo
+
+- name: configure git pull default
+  git_config:
+    name: pull.default
+    scope: global
+    value: machting
+  become: true
+  become_user: jenkins
+  become_method: sudo
+
+- name: determine jenkins home directory
+  getent:
+    database: passwd
+    key: jenkins

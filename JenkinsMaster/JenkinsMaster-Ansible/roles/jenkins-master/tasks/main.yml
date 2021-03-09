@@ -122,5 +122,7 @@
   when: jenkins_custom_user_content is defined
   notify: restart jenkins
 
+- include: configure_git_for_jenkins_user.yml
+
 - include: create_prerequisites_for_terraform_slaves.yml
   when: jenkins_terraform_path is defined
