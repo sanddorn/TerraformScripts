@@ -7,7 +7,7 @@ jenkins:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
   labelString: "build"
-  mode: NORMAL
+  mode: EXCLUSIVE
   nodes:
     - permanent:
         labelString: "nbg cx41"
@@ -15,6 +15,7 @@ jenkins:
           command:
             command: "{{ jenkins_home }}/terraform/startAgent.sh"
         name: "TerraformAgent"
+        numExecutors: 4
         remoteFS: "/Jenkins"
         retentionStrategy:
           demand:
@@ -92,6 +93,10 @@ credentials:
               id: "sonar-token"
               scope: GLOBAL
               secret: "{{ jenkins_sonarqube_token }}"
+          - string:
+              id: "slack-token"
+              scope: GLOBAL
+              secret: "{{ jenkins_slack_token }}"
 unclassified:
   gitLabConnectionConfig:
     connections:
@@ -209,6 +214,12 @@ unclassified:
     url: "http://{{ inventory_hostname }}:{{ jenkins_http_port }}/"
   shell:
     shell: "/bin/bash"
+  slackNotifier:
+    botUser: false
+    room: "Jenkins"
+    sendAsText: false
+    teamDomain: "bermuda-hq"
+    tokenCredentialId: "slack-token"
   timestamper:
     allPipelines: true
   sonarGlobalConfiguration:
@@ -229,7 +240,7 @@ tool:
       - installSource:
           installers:
           - command:
-              command: "pip3 install setuptools ansible"
+              command: "/usr/bin/pip3 install setuptools ansible"
               toolHome: "/home/jenkins/.local/bin/"
   git:
     installations:
