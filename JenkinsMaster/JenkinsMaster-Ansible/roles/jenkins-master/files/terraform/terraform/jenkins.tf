@@ -61,7 +61,7 @@ resource "hcloud_server" "jenkins-slave" {
       "adduser  --disabled-password --gecos \"\" ${var.username}",
       "adduser ${var.username} sudo",
       "mkdir /home/${var.username}/.ssh",
-      "echo ${data.hcloud_ssh_keys.jenkins_master_keys.ssh_keys.0.public_key} >> /home/${var.username}/.ssh/authorized_keys",
+      "touch /home/${var.username}/.ssh/authorized_keys",
       "chown -R ${var.username}:${var.username} /home/${var.username}/.ssh ",
       "chmod 700 /home/${var.username}/.ssh ",
       "chmod 600 /home/${var.username}/.ssh/authorized_keys ",
@@ -81,6 +81,16 @@ resource "hcloud_server" "jenkins-slave" {
       "adduser ${var.username} docker"
     ]
 
+    connection {
+      host = self.ipv4_address
+      type = "ssh"
+      user = "root"
+    }
+  }
+
+  provisioner "file" {
+    content = "${data.hcloud_ssh_keys.jenkins_master_keys.ssh_keys.0.public_key}"
+    destination = "/home/${var.username}/.ssh/authorized_keys"
     connection {
       host = self.ipv4_address
       type = "ssh"

@@ -1,30 +1,31 @@
-# todo and not realize as local action replace by https://docs.ansible.com/ansible/devel/modules/openssh_keypair_module.html for ansible 2.8
-- name: Generate SSH key for slaves
-  local_action: command ssh-keygen -q -f /tmp/id_rsa -N ''
-  args:
-    creates: /tmp/id_rsa
-  become: false
-
-# todo must be replace see above comment
-- name: create jenkins ssh folder
+- name: Create ssh dir
   file:
-    path: "/home/jenkins/.ssh"
+    dest: /home/jenkins/.ssh
+    mode: 0700
     state: directory
     owner: jenkins
     group: jenkins
-    recurse: true
 
-# todo must be replace see above comment
-- name: copy ssh keys to master
-  copy:
-    src: "/tmp/{{ item }}"
+- name: Generate ssh-keypair in place
+  community.crypto.openssh_keypair:
+    path: /home/jenkins/.ssh/id_rsa
+
+- name: Set Owner and Permission on ssh-keypair
+  file:
     dest: "/home/jenkins/.ssh/{{ item }}"
+    mode: 0600
+    state: touch
     owner: jenkins
     group: jenkins
-    mode: 0400
   loop:
     - id_rsa
     - id_rsa.pub
+
+
+- name: retrieve ssh-pubkey
+  ansible.builtin.slurp:
+    src: /home/jenkins/.ssh/id_rsa.pub
+  register: jenkins_pub_key
 
 - name: Download terraform
   get_url:
@@ -68,6 +69,6 @@
     force_init: true
     variables:
       hcloud_token: "{{ jenkins_terraform_api_token }}"
-      jenkins_ssh_pkey: "{{ lookup('file', '/tmp/id_rsa.pub') }}"
+      jenkins_ssh_pkey: "{{ jenkins_pub_key['content'] | b64decode }}"
       jenkins_key_name: "jenkins@{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
-  ignore_errors: True
+
