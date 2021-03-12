@@ -72,7 +72,7 @@ resource "hcloud_server" "jenkins" {
   }
 
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${self.ipv4_address},' -e ansible_user=${var.username} JenkinsMaster-Ansible/setup-jenkins.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${self.ipv4_address},' -e ansible_user=${var.username} -e jenkins_terraform_api_token=${var.hcloud_token} JenkinsMaster-Ansible/setup-jenkins.yml"
   }
 }
 
