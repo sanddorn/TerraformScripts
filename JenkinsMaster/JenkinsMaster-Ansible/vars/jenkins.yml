@@ -1,5 +1,6 @@
 jenkins_home: "/opt/jenkins"
 jenkins_http_port: "8080"
+jenkins_url: "https://jenkins.development.bermuda.de"
 
 jenkins_admin_password: admin123
 jenkins_admin_username: admin

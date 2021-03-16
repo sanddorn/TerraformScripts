@@ -211,7 +211,7 @@ unclassified:
               remote: "git@gitlab.bermuda.de:infrastructure/deploymenthistory-jenkinslibrary.git"
   location:
     adminAddress: "{{ jenkins_user_name }} <{{ jenkins_user_email }}>"
-    url: "http://{{ inventory_hostname }}:{{ jenkins_http_port }}/"
+    url: "{% if jenkins_url is defined %}{{ jenkins_url }}{% else %}http://{{ inventory_hostname }}:{{ jenkins_http_port }}/{% endif %}"
   shell:
     shell: "/bin/bash"
   slackNotifier:
