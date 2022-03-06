@@ -1,0 +1,23 @@
+- name: copy policies
+  copy:
+    src: "files/{{ item }}"
+    dest: /tmp
+  loop:
+    - admin-policy.hcl
+    - deployer-policy.hcl
+
+- name: create admin policy
+  shell:
+    cmd: "NOMAD_TOKEN={{ nomad_symetric_key }} nomad acl policy apply -description \"Admin policy\" admin /tmp/admin-policy.hcl"
+
+- name: create deployer policy
+  shell:
+    cmd: "NOMAD_TOKEN={{ nomad_symetric_key }} nomad acl policy apply -description \"Deployer policy\" deployer /tmp/deployer-policy.hcl"
+
+- name: remove policies-files
+  file:
+    dest: "/tmp/{{ item }}"
+    state: absent
+  loop:
+    - admin-policy.hcl
+    - deployer-policy.hcl

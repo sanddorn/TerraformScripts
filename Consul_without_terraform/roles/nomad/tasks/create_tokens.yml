@@ -1,0 +1,15 @@
+- name: create Admin Token
+  shell:
+    cmd: "NOMAD_TOKEN={{ nomad_symetric_key }} nomad acl token create -name=\"Admin Token\" -policy=admin -type=client "
+  register: admin_token
+
+- name: save admin token
+  local_action: copy content="{{ admin_token['stdout_lines'] | select('match', '^Secret ID') | first | regex_replace('^Secret ID.*= (.*)', '\1') }}" dest=files/nomad_admin_token
+
+- name: create deployer Token
+  shell:
+    cmd: "NOMAD_TOKEN={{ nomad_symetric_key }} nomad acl token create -name=\"Deployer Token\" -policy=deployer -type=client "
+  register: deployer_token
+
+- name: save deployer token
+  local_action: copy content="{{ deployer_token['stdout_lines'] | select('match', '^Secret ID') | first | regex_replace('^Secret ID.*= (.*)', '\1') }}" dest=files/nomad_deployer_token

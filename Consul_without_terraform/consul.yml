@@ -1,0 +1,19 @@
+- name: update
+  hosts: all
+  tasks:
+    - name: update apt
+      become: true
+      apt:
+        upgrade: safe
+        update_cache: true
+
+- name: Generate CA
+  hosts: consul_instances
+  vars:
+    force_ca: false
+  roles:
+    - generate_ca
+    - consul
+    - nomad
+    - glusterfs
+

@@ -1,0 +1,102 @@
+---
+# tasks file for consul
+- name: apt key for hashicorp
+  become: yes
+  apt_key:
+    url:  https://apt.releases.hashicorp.com/gpg
+
+- name: add apt repo
+  become: yes
+  apt_repository:
+    state: present
+    repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    update_cache: yes
+
+- name: install consul binary
+  become: yes
+  apt:
+    name: consul
+    state: latest
+    autoclean: yes
+    autoremove: yes
+
+- name: Copy Certificate
+  become: yes
+  copy:
+    src: "{{ ca_directory }}/{{ item }}"
+    dest: "/etc/consul.d/{{ item }}"
+  with_items:
+    - ca.pem
+    - "{{ ('consul_server' in group_names) | ternary('server','client') }}-{{ inventory_hostname }}.key"
+    - "{{ ('consul_server' in group_names) | ternary('server','client') }}-{{ inventory_hostname }}.pem"
+
+- name: try read consul symetric encryption key
+  local_action: set_fact consul_symetric_key="{{ lookup ('file', 'files/consul_secret') }}"
+  ignore_errors: true
+  run_once: true
+
+- name: set symetric encryption key
+  shell:
+    cmd: "consul keygen"
+  register: consul_keygen_command
+  run_once: true
+  when: "consul_symetric_key is not defined or consul_symetric_key"
+
+- name: write consul symetric encryption key
+  local_action: copy content="{{consul_keygen_command['stdout_lines'][0] }}" dest=files/consul_secret
+  when: "consul_symetric_key is not defined"
+
+- name: set symetric key variable
+  set_fact:
+    consul_symetric_key: "{{ consul_keygen_command.stdout_lines[0] }}"
+  when: "consul_symetric_key is not defined or consul_symetric_key"
+
+- name: write consul server config
+  become: yes
+  template:
+    dest: /etc/consul.d/consul.hcl
+    src: templates/consul-server.hcl
+  notify:
+    - restart and enable consul
+    - wait for consul to come up
+  when: "'consul_server' in group_names"
+
+- name: write consul client config
+  vars:
+    consul_symetric_key: "{{ consul_keygen_command.stdout_lines[0] }}"
+  become: yes
+  template:
+    dest: /etc/consul.d/consul.hcl
+    src: templates/consul-client.hcl
+  notify:
+    - restart and enable consul
+    - wait for consul to come up
+  when: "'consul_client' in group_names"
+
+- name: Add consul.env
+  become: yes
+  file:
+    path: /etc/consul.d/consul.env
+    state: file
+
+- name: Add Logdir
+  become: yes
+  file:
+    path: /var/log/consul
+    state: directory
+    owner: consul
+    group: bin
+
+- name: Add Workdir
+  become: yes
+  file:
+    path: /opt/consul
+    state: directory
+    owner: consul
+    group: consul
+
+
+
+
+
+

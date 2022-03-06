@@ -1,0 +1,83 @@
+---
+# tasks file for generate_ca
+- name: Create local directory for CA
+  local_action:
+    module: file
+    path: "{{ ca_directory }}"
+    state: directory
+
+- name: Check that the ca exists
+  local_action: stat path="{{ ca_directory }}/ca.key"
+  register: ca_key_stat
+
+- name: Create private key with password protection
+  local_action:
+    module: community.crypto.openssl_privatekey
+    path: "{{ ca_directory }}/ca.key"
+    cipher: auto
+    passphrase: "{{ secret_ca_passphrase }}"
+  run_once: true
+  when: not ca_key_stat.stat.exists or force_ca
+
+- name: Create certificate signing request (CSR) for CA certificate
+  local_action:
+    module: community.crypto.openssl_csr_pipe
+    privatekey_path: "{{ ca_directory }}/ca.key"
+    privatekey_passphrase: "{{ secret_ca_passphrase }}"
+    common_name: Bermuda Consul CA
+    use_common_name_for_san: false  # since we do not specify SANs, don't use CN as a SAN
+    basic_constraints:
+      - 'CA:TRUE'
+    basic_constraints_critical: yes
+    key_usage:
+      - keyCertSign
+    key_usage_critical: true
+  register: ca_csr
+  run_once: true
+
+  when: not ca_key_stat.stat.exists or force_ca
+
+- name: Create self-signed CA certificate from CSR
+  local_action:
+    module: community.crypto.x509_certificate
+    path: "{{ ca_directory }}/ca.pem"
+    csr_content: "{{ ca_csr.csr }}"
+    privatekey_path: "{{ ca_directory }}/ca.key"
+    privatekey_passphrase: "{{ secret_ca_passphrase }}"
+    provider: selfsigned
+  run_once: true
+  when: not ca_key_stat.stat.exists or force_ca
+
+- name: Create Server key without password protection
+  local_action:
+    module: community.crypto.openssl_privatekey
+    path: "{{ ca_directory }}/{{ ('consul_server' in group_names) | ternary('server','client') }}-{{ inventory_hostname }}.key"
+    cipher: auto
+    passphrase: ""
+
+- name: Create certificate signing request (CSR) for new certificate
+  local_action:
+    module: community.crypto.openssl_csr_pipe
+    privatekey_path: "{{ ca_directory }}/{{ ('consul_server' in group_names) | ternary('server','client') }}-{{ inventory_hostname }}.key"
+    extended_key_usage:
+      - clientAuth
+      - serverAuth
+    subject_alt_name:
+      - "DNS:server.{{ consul_datacenter }}.{{ consul_domain }}"
+      - "DNS:consul.bermuda.de"
+      - "DNS:{{ inventory_hostname }}"
+  register: csr
+
+- name: Sign certificate with our CA
+  local_action:
+    module: community.crypto.x509_certificate
+    csr_content: "{{ csr.csr }}"
+    provider: ownca
+    ownca_path: "{{ ca_directory }}/ca.pem"
+    ownca_privatekey_path: "{{ ca_directory }}/ca.key"
+    ownca_privatekey_passphrase: "{{ secret_ca_passphrase }}"
+    ownca_not_after: +365d  # valid for one year
+    ownca_not_before: "-1d"  # valid since yesterday
+
+    path: "{{ ca_directory }}/{{ ('consul_server' in group_names) | ternary('server','client') }}-{{ inventory_hostname }}.pem"
+

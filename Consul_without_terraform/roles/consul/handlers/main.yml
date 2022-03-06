@@ -1,0 +1,16 @@
+---
+# handlers file for consul
+- name: restart and enable consul
+  become: true
+  service:
+    name: consul
+    enabled: true
+    state: restarted
+
+- name: wait for consul to come up
+  shell:
+    cmd: "consul members"
+  register: consul_members_output
+  retries: 120
+  delay: 5
+  until: consul_members_output['rc'] == 0

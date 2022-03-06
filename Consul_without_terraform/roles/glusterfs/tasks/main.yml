@@ -1,0 +1,84 @@
+---
+# tasks file for glusterfs
+- name: Install prerequisites
+  become: yes
+  apt:
+    update_cache: yes
+    name:
+      - glusterfs-server
+
+- name: enable gluster daemons
+  become: yes
+  systemd:
+    enabled: true
+    state: started
+    name: "{{ item }}"
+  loop:
+    - glusterd
+    - glustereventsd
+
+- name: Gluster peers
+  become: yes
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes:
+      - "{{ item }}"
+  loop:
+    "{{ groups.gluster_server }}"
+
+- name: Calculate Mounted FS
+  set_fact:
+    mountedfs: "{{ ansible_mounts | map(attribute='device') }}"
+  when: "vars.filesystems is defined"
+
+- name: Calculate Remaining FS
+  set_fact:
+    createfs: "{{ vars.filesystems | map(attribute='device') | intersect(mountedfs) }}"
+  when: "vars.filesystems is defined"
+
+- name: CreateFS
+  become: yes
+  community.general.filesystem:
+    fstype: xfs
+    dev: "{{ item }}"
+  loop: "{{ createfs }}"
+  when: "createfs is defined"
+
+- name: MountFS
+  become: yes
+  mount:
+    state: mounted
+    boot: true
+    path: "{{ item.path }}"
+    src: "{{ item.device }}"
+    fstype: xfs
+  loop: "{{ vars.filesystems }}"
+  when: "vars.filesystems is defined"
+
+- name: Change FS-Info to Bricks
+  set_fact:
+    bricks: "{{ vars.filesystems | map(attribute='path') }}"
+  when: "vars.filesystems is defined"
+
+- name: Create Bricks info
+  set_fact:
+    bricks: "{{ vars.bricks | map('regex_replace', '$', '/brick') | list }}"
+  when: "vars.bricks is defined"
+
+- name: Create Brick for Gluster
+  become: yes
+  file:
+    state: directory
+    path: "{{ item }}"
+  loop: "{{ bricks }}"
+  when: "bricks is defined"
+
+- name: Gluster Bricks
+  become: yes
+  gluster.gluster.gluster_volume:
+    state: present
+    name: "{{ item.split('/') | last}}"
+    bricks: "{{ item }}"
+    cluster: "{{ groups.gluster_server }}"
+  loop: "{{ bricks }}"
+  when: "bricks is defined"
