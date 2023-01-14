@@ -1,0 +1,36 @@
+[consul_server]
+%{ for host in consul_server ~}
+${host}
+%{ endfor ~}
+
+[consul_server_internal]
+%{ for host in consul_server_int ~}
+${host}
+%{ endfor ~}
+
+[consul_client]
+%{ for host in consul_client ~}
+${host}
+%{ endfor ~}
+
+[consul_client_internal]
+%{ for host in consul_client_int ~}
+${host}
+%{ endfor ~}
+
+[consul_instances]
+%{ for host in consul_server ~}
+${host}
+%{ endfor ~}
+%{ for host in consul_client ~}
+${host}
+%{ endfor ~}
+
+
+[consul_instances:vars]
+ca_directory=files
+consul_datacenter=bermuda_home
+consul_domain=bermuda.de
+consul_iface=ens3
+consul_network=${consul_network}
+secret_ca_passphrase=a1b2c3

@@ -15,5 +15,5 @@
     - generate_ca
     - consul
     - nomad
-    - glusterfs
+#    - glusterfs
 

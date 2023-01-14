@@ -3,14 +3,17 @@ domain = "{{ consul_domain }}"
 data_dir = "/opt/consul"
 encrypt = "{{ consul_symetric_key }}"
 ca_file = "/etc/consul.d/ca.pem"
-cert_file = "/etc/consul.d/client-{{ inventory_hostname }}.pem"
-key_file = "/etc/consul.d/client-{{ inventory_hostname }}.key"
+cert_file = "/etc/consul.d/server-{{ inventory_hostname }}.pem"
+key_file = "/etc/consul.d/server-{{ inventory_hostname }}.key"
 verify_incoming = true
 verify_outgoing = true
 verify_server_hostname = true
-retry_join = ["{{ groups['consul_server'] | join(',') }}"]
+retry_join = ["{{ groups['consul_server_internal'] | join(',') }}"]
 bind_addr = "{{ '{{' }} GetPrivateInterfaces | include \"network\" \"{{ consul_network }}\" | attr \"address\" {{ '}}' }}"
 log_file = "/var/log/consul/"
+
+server = true
+bootstrap_expect = {{ groups['consul_server'] | length }}
 
 acl = {
   enabled = true
@@ -22,7 +25,4 @@ performance {
   raft_multiplier = 1
 }
 
-telemetry {
-  disable_compat_1.9 = true
-}
 

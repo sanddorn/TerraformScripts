@@ -1,0 +1,29 @@
+# tasks file for dockerd
+- name: install required package
+  become: yes
+  apt: name="{{ item }}" state=present
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - software-properties-common
+
+- name: add Docker's official GPG key
+  become: yes
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: add Docker's repository
+  become: yes
+  apt_repository: repo="deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable" update_cache=yes
+
+- name: install latest Docker Engine
+  become: yes
+  apt: name="{{ item }}" state=present
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - pass
+    - golang-docker-credential-helpers
+    - gnupg2

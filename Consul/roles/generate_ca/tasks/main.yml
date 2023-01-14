@@ -66,6 +66,7 @@
       - "DNS:server.{{ consul_datacenter }}.{{ consul_domain }}"
       - "DNS:consul.bermuda.de"
       - "DNS:{{ inventory_hostname }}"
+    subject_alt_name_critical: true
   register: csr
 
 - name: Sign certificate with our CA

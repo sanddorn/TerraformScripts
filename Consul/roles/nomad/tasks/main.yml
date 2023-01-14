@@ -1,0 +1,191 @@
+---
+# tasks file for nomad
+- name: prepare environment for nomad
+  include_tasks: prepare.yml
+  when: "'consul_client' in group_names"
+
+- name: apt key for hashicorp
+  become: yes
+  apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+
+- name: add apt repo
+  become: yes
+  apt_repository:
+    state: present
+    repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    update_cache: yes
+
+- name: install nomad binary
+  become: yes
+  apt:
+    name: nomad
+    state: latest
+    autoclean: yes
+    autoremove: yes
+
+#- name: try read nomad symetric encryption key
+#  local_action: set_fact nomad_symetric_key="{{ lookup ('file', 'files/nomad_secret') }}"
+#  ignore_errors: true
+#  run_once: true
+
+- name: write nomad server config
+  become: yes
+  template:
+    dest: /etc/nomad.d/nomad.hcl
+    src: templates/nomad-server.hcl
+  when: "'consul_server' in group_names"
+
+- name: write nomad client config
+  become: yes
+  template:
+    dest: /etc/nomad.d/nomad.hcl
+    src: templates/nomad-client.hcl
+  when: "'consul_client' in group_names"
+
+- name: Add Logdir
+  become: yes
+  file:
+    path: /var/log/nomad
+    state: directory
+    owner: nomad
+    group: bin
+
+- name: Add Nomad Homedir
+  become: yes
+  file:
+    path: /home/nomad
+    state: directory
+    owner: nomad
+    group: nomad
+
+- name: Add nomad to docker group
+  become: yes
+  user:
+    name: nomad
+    groups:
+      - docker
+      - nomad
+  when: "'consul_client' in group_names"
+
+- name: download cni plugins
+  become: true
+  get_url:
+    url: "https://github.com/containernetworking/plugins/releases/download/v1.0.0/cni-plugins-linux-amd64-v1.0.0.tgz"
+    dest: "/tmp/cni-plugins-linux-amd64-v1.0.0.tgz"
+
+- name: create cni directory
+  become: true
+  file:
+    path: /opt/cni/bin
+    state: directory
+  when: "'consul_client' in group_names"
+
+- name: extract cni plugins
+  become: true
+  unarchive:
+    src: "/tmp/cni-plugins-linux-amd64-v1.0.0.tgz"
+    dest: /opt/cni/bin
+    remote_src: yes
+  when: "'consul_client' in group_names"
+
+- name: install docker auth config
+  become: yes
+  template:
+    dest: /etc/docker/docker_auth.json
+    src: templates/docker_auth.json
+  when: "'consul_client' in group_names"
+
+- name: create gpg config
+  become: yes
+  copy:
+    dest: /tmp/gpg.conf
+    owner: nomad
+    src: files/gpg.conf
+  when: "'consul_client' in group_names"
+
+- name: set nomad loginshell
+  become: yes
+  user:
+    name: nomad
+    shell: /bin/bash
+  when: "'consul_client' in group_names"
+
+- name: generate gpg key
+  become: yes
+  ansible.builtin.command:
+    argv:
+      - su
+      - nomad
+      - -c
+      - gpg2 --batch --gen-key /tmp/gpg.conf
+    creates: /home/nomad/.gnupg/trustdb.gpg
+  when: "'consul_client' in group_names"
+
+- name: read gpg keyid
+  become: yes
+  command:
+    argv:
+      - su
+      - nomad
+      - -c
+      - gpg2 --list-secret-keys --keyid-format LONG | grep rsa | awk '{print $2}' | sed 's/.*\///'
+  when: "'consul_client' in group_names"
+  register: gpg_key_id
+
+- name: init pass
+  become: yes
+  command:
+    argv:
+    - su
+    - nomad
+    - -c
+    - "pass init {{ gpg_key_id.stdout_lines[0] }}"
+  when: "'consul_client' in group_names"
+
+- name: restart and enable nomad
+  become: true
+  service:
+    name: nomad
+    enabled: true
+    state: restarted
+
+- name: set GOSSIP Encryption Key
+  shell:
+    cmd: "nomad acl bootstrap"
+  register: nomad_acl_bootstrap
+  run_once: true
+  when: "'consul_server' in group_names and nomad_symetric_key is not defined"
+
+- name: save nomad token
+  local_action: copy content="{{ nomad_acl_bootstrap['stdout_lines'] | select('match', '^Secret ID') | first | regex_replace('^Secret ID.*= (.*)', '\1') }}" dest=files/nomad_secret
+  when: "'consul_server' in group_names and nomad_symetric_key is not defined"
+
+- name: try read nomad symetric encryption key
+  local_action: set_fact nomad_symetric_key="{{ lookup ('file', 'files/nomad_secret') }}"
+  ignore_errors: true
+  run_once: true
+  when: nomad_symetric_key is not defined
+
+- name: wait for nomad to come up
+  shell:
+    cmd: "NOMAD_TOKEN={{ nomad_symetric_key }} nomad server members"
+  register: nomad_members_output
+  retries: 120
+  delay: 5
+  until: nomad_members_output['rc'] == 0
+
+- include_tasks: create_policies.yml
+  run_once: true
+
+- include_tasks: create_tokens.yml
+  run_once: true
+
+# TODO: Add docker logins.
+
+
+
+
+
+
+

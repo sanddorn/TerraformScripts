@@ -95,6 +95,12 @@
     owner: consul
     group: consul
 
+- name: start consul
+  become: true
+  service:
+    name: consul
+    state: started
+
 
 
 
