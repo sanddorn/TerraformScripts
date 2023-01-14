@@ -1,0 +1,4 @@
+mysql_database: gitea
+mysql_username: gitea
+server_domain: gitea.bermuda.de
+acme_email: nils.bokermann@bermuda.de

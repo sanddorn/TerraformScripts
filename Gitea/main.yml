@@ -1,0 +1,133 @@
+- hosts: all
+  vars_files:
+    - vars/gitea.yml
+  tasks:
+    - name: install extra packets
+      become: yes
+      apt:
+        name:
+          - mariadb-server
+          - mariadb-client
+          - python3-mysqldb
+        state: latest
+
+    - name: create database password
+      set_fact:
+        mysql_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+
+    - name: create gitea database
+      become: yes
+      community.mysql.mysql_db:
+        name: "{{ mysql_database }}"
+        state: present
+
+    - name: create gitea-user
+      become: yes
+      community.mysql.mysql_user:
+        login_user: root
+        name: "{{ mysql_username }}"
+        password: "{{ mysql_password }}"
+        priv: "{{ mysql_database }}.*:ALL,GRANT"
+
+    - name: Add git user
+      become: yes
+      user:
+        name: git
+        shell: /bin/bash
+        home: /home/git
+        createhome: yes
+        system: yes
+        state: present
+
+    - name: Download gitea
+      become: yes
+      get_url:
+        url: https://dl.gitea.io/gitea/1.18.0/gitea-1.18.0-linux-amd64
+        dest: /home/git/gitea
+        mode: 0755
+
+    - name: Install gitea
+      become: yes
+      copy:
+        remote_src: yes
+        src: /home/git/gitea
+        dest: /usr/local/bin/gitea
+        mode: 0755
+
+    - name: Create gitea directory structure
+      become: yes
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: git
+        group: git
+      loop:
+        - /var/lib/gitea
+        - /var/lib/gitea/custom
+        - /var/lib/gitea/data
+        - /var/lib/gitea/indexers
+        - /var/lib/gitea/attachments
+        - /var/lib/gitea/log
+        - /var/lib/gitea/lfs
+        - /var/lib/gitea/tmp
+        - /etc/gitea
+        - /mnt/gitea_data/repositories
+
+    - name: create gitea config
+      become: yes
+      template:
+        src: templates/gitea.ini
+        dest: /etc/gitea/app.ini
+        owner: root
+        group: git
+        mode: 0640
+
+    - name: Install gitea Service
+      become: yes
+      template:
+        src: templates/gitea.service.jj2
+        dest: /etc/systemd/system/gitea.service
+        owner: root
+        group: root
+        mode: 0640
+
+    - name: Enable gitea Service
+      become: yes
+      systemd:
+        name: gitea
+        enabled: yes
+        daemon_reload: yes
+        state: started
+
+    - name: Wait for gitea start
+      become: yes
+      uri:
+        url: "https://{{ server_domain }}"
+        validate_certs: no
+        status_code:
+          - 200
+          - 403
+        timeout: 5
+      register: jenkins_service_status
+      # Keep trying for 10 mins in 5 sec intervals
+      retries: 120
+      delay: 5
+      until: >
+        'status' in jenkins_service_status and
+         jenkins_service_status['status'] == 200 or
+         jenkins_service_status['status'] == 403
+
+    - name: Create gitea admin user
+      become: yes
+      shell: |
+        set -e
+        su git -c '/usr/local/bin/gitea admin user create --username root --password toor --email root@localhost --admin --config /etc/gitea/app.ini'
+      allow_failures: yes
+
+    - name: Restart gitea Service
+      become: yes
+      systemd:
+        name: gitea
+        enabled: yes
+        state: restarted
+
