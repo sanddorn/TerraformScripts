@@ -3,7 +3,7 @@ terraform {
   required_providers {
     hcloud = {
       source = "hetznercloud/hcloud"
-      version = "~>1.24.0"
+      version = "~>1.35"
     }
   }
 }
@@ -22,16 +22,13 @@ variable "username" {
 variable "server_size" {
   type = string
   description = "Server Sizing"
-}
-
-variable "jenkins_agent_jar_url" {
-  type = string
-  description = "URL to get the agent.jar"
+  default = "cx41"
 }
 
 variable "jenkins_path" {
   type = string
   description = "Workdir for agent"
+  default = "/opt/jenkins"
 }
 
 variable "node_name" {
@@ -47,13 +44,17 @@ data "hcloud_ssh_keys" "jenkins_master_keys" {
   with_selector = "target=jenkins"
 }
 
+data "hcloud_image" "jenkins" {
+  with_selector = "jenkins=agent"
+}
+
 resource "hcloud_server" "jenkins-slave" {
   name = var.node_name
-  image = "ubuntu-20.04"
+  image = data.hcloud_image.jenkins.id
   server_type = var.server_size
   location = "nbg1"
 
-  ssh_keys = data.hcloud_ssh_keys.jenkins_master_keys.ssh_keys.*.name
+//  ssh_keys = data.hcloud_ssh_keys.jenkins_master_keys.ssh_keys.*.name
 
   provisioner "remote-exec" {
     inline = [
@@ -65,19 +66,9 @@ resource "hcloud_server" "jenkins-slave" {
       "chown -R ${var.username}:${var.username} /home/${var.username}/.ssh ",
       "chmod 700 /home/${var.username}/.ssh ",
       "chmod 600 /home/${var.username}/.ssh/authorized_keys ",
-      "apt install -y openjdk-8-jre-headless",
       "mkdir -p ${var.jenkins_path}",
       "chmod 755 ${var.jenkins_path}",
       "chown ${var.username}:${var.username} ${var.jenkins_path}",
-      "curl -o ${var.jenkins_path}/agent.jar ${var.jenkins_agent_jar_url}",
-      "curl https://download.docker.com/linux/ubuntu/gpg | apt-key add -",
-      "curl https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -",
-      "apt-add-repository 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main'",
-      "apt-add-repository 'deb https://download.docker.com/linux/ubuntu focal stable'",
-      "curl https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -",
-      "apt-add-repository 'https://aquasecurity.github.io/trivy-repo/deb focal main'",
-      "apt update && apt install -y unzip git google-chrome-stable openjdk-8-jre-headless docker-ce docker-ce-cli containerd.io trivy python3-pip",
-      "curl -o chromedriver.zip https://chromedriver.storage.googleapis.com/89.0.4389.23/chromedriver_linux64.zip && unzip chromedriver.zip && mv chromedriver /usr/bin",
       "adduser ${var.username} docker"
     ]
 
