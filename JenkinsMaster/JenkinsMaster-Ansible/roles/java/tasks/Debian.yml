@@ -1,8 +1,8 @@
 ---
-- name: install java 8
+- name: install java 11
   become: yes
   become_method: sudo
   apt:
-    name: openjdk-8-jre-headless
+    name: openjdk-11-jre-headless
     force: yes
     update_cache: yes

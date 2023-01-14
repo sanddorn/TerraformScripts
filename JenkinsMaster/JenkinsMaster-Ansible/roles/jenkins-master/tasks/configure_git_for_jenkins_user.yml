@@ -30,3 +30,20 @@
   getent:
     database: passwd
     key: jenkins
+
+- name: Create .ssh-dir
+  file:
+    path: /home/jenkins/.ssh
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: 0700
+
+- name: Set gitlab to known hosts
+  ansible.builtin.known_hosts:
+    name: gitlab.bermuda.de
+    key: gitlab.bermuda.de,144.76.95.221 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJAmHF3nvowXBjoQKQ5RzNH0FRFSGh/fdRR0lS88glFxzTz5reZz2Tjjnd372rGittzovWk4mIROu26FD6gpKhE=
+    state: present
+  become: true
+  become_user: jenkins
+  become_method: sudo

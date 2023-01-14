@@ -8,7 +8,9 @@
     - software-properties-common
 
 - name: add Docker's official GPG key
-  apt_key: url="https://download.docker.com/linux/ubuntu/gpg" state=present
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
 
 - name: add Docker's repository
   apt_repository: repo="deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable" update_cache=yes

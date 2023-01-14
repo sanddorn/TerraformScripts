@@ -6,7 +6,7 @@
 
 - name: add jenkins repo
   apt_repository:
-    repo: deb https://pkg.jenkins.io/debian binary/
+    repo: deb https://pkg.jenkins.io/debian-stable binary/
     state: present
 
 - name: install Jenkins
@@ -14,3 +14,15 @@
     name: "jenkins"
     update_cache: yes
     state: latest
+
+- name: Change Jenkins Home in systemd
+  lineinfile:
+    path: "/lib/systemd/system/jenkins.service"
+    regexp: '^Environment="JENKINS_HOME='
+    line: 'Environment="JENKINS_HOME={{ jenkins_home }}"'
+
+- name: Change Jenkins startup timeout in systemd
+  lineinfile:
+    path: "/lib/systemd/system/jenkins.service"
+    regexp: 'TimeoutStartSec='
+    line: 'TimeoutStartSec=infinity'

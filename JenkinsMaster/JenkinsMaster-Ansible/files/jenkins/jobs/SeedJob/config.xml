@@ -9,7 +9,7 @@
     </com.dabsquared.gitlabjenkins.connection.GitLabConnectionProperty>
   </properties>
   <scm class="hudson.scm.NullSCM"/>
-  <assignedNode>master</assignedNode>
+  <assignedNode>built-in</assignedNode>
   <canRoam>false</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
@@ -18,7 +18,7 @@
   <triggers>
     <org.jvnet.hudson.plugins.triggers.startup.HudsonStartupTrigger plugin="startup-trigger-plugin@2.9.3">
       <spec></spec>
-      <label>master</label>
+      <label>built-in</label>
       <quietPeriod>0</quietPeriod>
       <runOnChoice>ON_CONNECT</runOnChoice>
     </org.jvnet.hudson.plugins.triggers.startup.HudsonStartupTrigger>

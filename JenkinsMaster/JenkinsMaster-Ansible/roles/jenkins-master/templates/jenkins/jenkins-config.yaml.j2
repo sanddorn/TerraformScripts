@@ -1,26 +1,34 @@
 jenkins:
   agentProtocols:
-  - "JNLP4-connect"
-  - "Ping"
+    - "JNLP4-connect"
+    - "Ping"
   disableRememberMe: false
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
   labelString: "build"
   mode: EXCLUSIVE
-  nodes:
-    - permanent:
-        labelString: "nbg cx41"
-        launcher:
-          command:
-            command: "{{ jenkins_home }}/terraform/startAgent.sh"
-        name: "TerraformAgent"
-        numExecutors: 4
-        remoteFS: "/Jenkins"
-        retentionStrategy:
-          demand:
-            idleDelay: 0
-            inDemandDelay: 0
+  clouds:
+    - hetzner:
+        credentialsId: "hetzner"
+        instanceCapStr: "2"
+        name: "hetzner"
+        serverTemplates:
+          - bootDeadline: 15
+            connector:
+              root:
+                connectionMethod: "default"
+                sshCredentialsId: "jenkins-ssh"
+            image: "jenkins=agent"
+            labelStr: "nbg,cx41"
+            location: "nbg1"
+            mode: NORMAL
+            name: "agent"
+            network: "net=jenkins"
+            numExecutors: 4
+            remoteFs: "/Jenkins"
+            serverType: "cx41"
+            shutdownPolicy: "hour-wrap"
   numExecutors: {{ ansible_facts.processor_vcpus }}
   primaryView:
     all:
@@ -38,21 +46,31 @@ jenkins:
   slaveAgentPort: 0
   updateCenter:
     sites:
-    - id: "default"
-      url: "https://updates.jenkins.io/update-center.json"
+      - id: "default"
+        url: "https://updates.jenkins.io/update-center.json"
   views:
-  - all:
-      name: "all"
+    - all:
+        name: "all"
 security:
   scriptApproval:
     approvedSignatures:
-    - "method hudson.model.Computer getNode"
-    - "method hudson.model.Label getName"
-    - "method hudson.model.Node getSelfLabel"
-    - "method jenkins.model.Jenkins getComputers"
-    - "staticMethod jenkins.model.Jenkins getInstance"
-    - "method groovy.text.Template make java.util.Map"
-    - "method groovy.text.TemplateEngine createTemplate java.lang.String"
+      - "method com.cloudbees.plugins.credentials.common.IdCredentials getId"
+      - "method com.dabsquared.gitlabjenkins.connection.GitLabApiToken getApiToken"
+      - "method groovy.text.Template make java.util.Map"
+      - "method groovy.text.TemplateEngine createTemplate java.lang.String"
+      - "method hudson.model.Computer getNode"
+      - "method hudson.model.Label getName"
+      - "method hudson.model.Node getSelfLabel"
+      - "method java.net.HttpURLConnection getResponseCode"
+      - "method java.net.URL openConnection"
+      - "method jenkins.model.Jenkins getComputers"
+      - "staticField hudson.security.ACL SYSTEM"
+      - "staticMethod com.cloudbees.plugins.credentials.CredentialsProvider lookupCredentials\
+       \ java.lang.Class hudson.model.Item org.acegisecurity.Authentication"
+      - "staticMethod com.cloudbees.plugins.credentials.CredentialsProvider lookupCredentials\
+       \ java.lang.Class hudson.model.ItemGroup org.acegisecurity.Authentication"
+      - "staticMethod jenkins.model.Jenkins getInstance"
+      - "staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods getText java.net.URL"
   globalJobDslSecurityConfiguration:
     useScriptSecurity: false
 credentials:
@@ -68,7 +86,7 @@ credentials:
               privateKeySource:
                 directEntry:
                   privateKey: |
-                    {{ jenkins_private_ssh_key | indent( width=20, indentfirst=False) }}
+                    {{ jenkins_private_ssh_key | indent( width=20) }}
           - basicSSHUserPrivateKey:
               scope: GLOBAL
               id: "ansible-ssh"
@@ -78,7 +96,17 @@ credentials:
               privateKeySource:
                 directEntry:
                   privateKey: |
-                    {{ jenkins_private_ssh_key | indent( width=20, indentfirst=False) }}
+                    {{ jenkins_private_ssh_key | indent( width=20) }}
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "jenkins-ssh"
+              username: "jenkins"
+              passphrase: "" #Doable, but not recommended
+              description: ""
+              privateKeySource:
+                directEntry:
+                  privateKey: |
+                    {{ jenkins_private_ssh_key | indent( width=20) }}
           - gitLabApiTokenImpl:
               scope: GLOBAL
               id: "gitlab-api"
@@ -97,16 +125,32 @@ credentials:
               id: "slack-token"
               scope: GLOBAL
               secret: "{{ jenkins_slack_token }}"
+          - string:
+              id: "hetzner"
+              scope: GLOBAL
+              secret: "{{ jenkins_terraform_api_token }}"
+          - string:
+              id: "github-token"
+              scope: GLOBAL
+              secret: "{{ jenkins_github_token }}"
+          - string:
+              id: "frontend-cypress-key"
+              scope: GLOBAL
+              secret: "{{ jenkins_frontend_cypress_key }}"
+          - string:
+              id: "e2e-cypress-key"
+              scope: GLOBAL
+              secret: "{{ jenkins_e2e_cypress_key }}"
 unclassified:
   gitLabConnectionConfig:
     connections:
-    - clientBuilderId: "autodetect"
-      connectionTimeout: 10
-      ignoreCertificateErrors: false
-      readTimeout: 10
-      name: "gitlab"
-      apiTokenId: "gitlab-api"
-      url: "https://gitlab.bermuda.de"
+      - clientBuilderId: "autodetect"
+        connectionTimeout: 10
+        ignoreCertificateErrors: false
+        readTimeout: 10
+        name: "gitlab"
+        apiTokenId: "gitlab-api"
+        url: "https://gitlab.bermuda.de"
   keycloakSecurityRealm:
     keycloakJson: |-
       {
@@ -199,16 +243,16 @@ unclassified:
               serverId: "bermuda-snapshot"
   globalLibraries:
     libraries:
-    - defaultVersion: "master"
-      implicit: true
-      includeInChangesets: false
-      name: "jenkins-shared-libraries"
-      retriever:
-        modernSCM:
-          scm:
-            git:
-              credentialsId: "gitlab-ssh"
-              remote: "git@gitlab.bermuda.de:infrastructure/deploymenthistory-jenkinslibrary.git"
+      - defaultVersion: "master"
+        implicit: true
+        includeInChangesets: false
+        name: "jenkins-shared-libraries"
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                credentialsId: "gitlab-ssh"
+                remote: "git@gitlab.bermuda.de:infrastructure/deploymenthistory-jenkinslibrary.git"
   location:
     adminAddress: "{{ jenkins_user_name }} <{{ jenkins_user_email }}>"
     url: "{% if jenkins_url is defined %}{{ jenkins_url }}{% else %}http://{{ inventory_hostname }}:{{ jenkins_http_port }}/{% endif %}"
@@ -235,25 +279,25 @@ unclassified:
 tool:
   ansibleInstallation:
     installations:
-    - name: "Ansible-2.9.5"
-      properties:
-      - installSource:
-          installers:
-          - command:
-              command: "/usr/bin/pip3 install setuptools ansible"
-              toolHome: "/home/jenkins/.local/bin/"
+      - name: "Ansible-2.9.5"
+        properties:
+          - installSource:
+              installers:
+                - command:
+                    command: "/usr/bin/pip3 install setuptools ansible"
+                    toolHome: "/home/jenkins/.local/bin/"
   git:
     installations:
-    - home: "git"
-      name: "Default"
+      - home: "git"
+        name: "Default"
   go:
     installations:
-    - name: "go-main"
-      properties:
-      - installSource:
-          installers:
-            - golangInstaller:
-                id: "1.15.6"
+      - name: "go-main"
+        properties:
+          - installSource:
+              installers:
+                - golangInstaller:
+                    id: "1.15.6"
   jdk:
     installations:
       - name: "JDK11"
@@ -263,14 +307,28 @@ tool:
                 - zip:
                     subdir: "jdk-11.0.10+9"
                     url: "https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.10%2B9/OpenJDK11U-jdk_x64_linux_hotspot_11.0.10_9.tar.gz"
+      - name: "JDK17"
+        properties:
+          - installSource:
+              installers:
+                - zip:
+                    subdir: "jdk-17.0.4.1+1"
+                    url: "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.4.1+1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.4.1_1.tar.gz"
+
   maven:
     installations:
-    - name: "Maven 3.5"
-      properties:
-      - installSource:
-          installers:
-            - maven:
-                id: "3.5.2"
+      - name: "Maven 3.5"
+        properties:
+          - installSource:
+              installers:
+                - maven:
+                    id: "3.5.2"
+      - name: "Maven 3"
+        properties:
+          - installSource:
+              installers:
+                - maven:
+                    id: "3.8.6"
   mavenGlobalConfig:
     globalSettingsProvider:
       mvn:
@@ -278,13 +336,13 @@ tool:
     settingsProvider: "standard"
   nodejs:
     installations:
-    - name: "Node13"
-      properties:
-      - installSource:
-         installers:
-          - nodeJSInstaller:
-              id: "13.14.0"
-              npmPackagesRefreshHours: 72
+      - name: "Node"
+        properties:
+          - installSource:
+              installers:
+                - nodeJSInstaller:
+                    id: "16.17.0"
+                    npmPackagesRefreshHours: 72
   sonarRunnerInstallation:
     installations:
       - name: "sonarqube-scanner"

@@ -3,7 +3,7 @@ terraform {
   required_providers {
     hcloud = {
       source = "hetznercloud/hcloud"
-      version = "~>1.24.0"
+      version = "~>1.35"
     }
   }
 }
@@ -33,13 +33,60 @@ data "hcloud_ssh_keys" "ssh_root_keys" {
    with_selector = var.ssh_root_key_selector
 }
 
+resource "hcloud_network" "jenkins" {
+  name     = "jenkins"
+  ip_range = "10.0.0.0/24"
+  labels = {
+    net="jenkins"
+  }
+}
+
+resource "hcloud_network_subnet" "jenkins_agent" {
+  ip_range     = "10.0.0.0/24"
+  network_id   = hcloud_network.jenkins.id
+  network_zone = "eu-central"
+  type         = "cloud"
+}
+
+resource "hcloud_primary_ip" "jenkins" {
+  name          = "primary_ip_jenkins"
+  datacenter    = "nbg1-dc3"
+  type          = "ipv4"
+  assignee_type = "server"
+  auto_delete   = true
+  labels = {
+    "hallo" : "jenkins"
+  }
+}
+
+resource "null_resource" "configure_Jenkins" {
+  provisioner "local-exec" {
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${hcloud_server.jenkins.ipv6_address},' -e ansible_user=${var.username} -e jenkins_terraform_api_token=${var.hcloud_token} JenkinsMaster-Ansible/setup-jenkins.yml"
+  }
+  depends_on = [hcloud_server.jenkins]
+}
+
 resource "hcloud_server" "jenkins" {
   name = "jenkins"
-  image = "ubuntu-20.04"
+  image = "ubuntu-22.04"
   server_type = "cx11"
   location = "nbg1"
 
+  public_net {
+    ipv4_enabled = true
+    ipv4 = hcloud_primary_ip.jenkins.id
+    ipv6_enabled = true
+  }
+
+  network {
+    network_id = hcloud_network.jenkins.id
+  }
+
   ssh_keys = data.hcloud_ssh_keys.ssh_root_keys.ssh_keys.*.name
+
+  depends_on = [
+    hcloud_network.jenkins
+  ]
 
   provisioner "remote-exec" {
     inline = [
@@ -54,7 +101,7 @@ resource "hcloud_server" "jenkins" {
     ]
 
     connection {
-      host = self.ipv4_address
+      host = self.ipv6_address
       type = "ssh"
       user = "root"
     }
@@ -65,14 +112,10 @@ resource "hcloud_server" "jenkins" {
     source = "sudoers"
 
     connection {
-      host = self.ipv4_address
+      host = self.ipv6_address
       type = "ssh"
       user = "root"
     }
-  }
-
-  provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${self.ipv4_address},' -e ansible_user=${var.username} -e jenkins_terraform_api_token=${var.hcloud_token} JenkinsMaster-Ansible/setup-jenkins.yml"
   }
 }
 

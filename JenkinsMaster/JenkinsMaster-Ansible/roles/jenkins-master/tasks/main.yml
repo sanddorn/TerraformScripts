@@ -3,7 +3,7 @@
   include_vars:
     file: "{{ ansible_os_family }}.yml"
 
-- include: "{{ ansible_os_family }}.yml"
+- include_tasks: "{{ ansible_os_family }}.yml"
 
 - name: Setup JENKINS_HOME
   lineinfile:
@@ -76,6 +76,7 @@
     name: jenkins
     enabled: true
     state: restarted
+    daemon-reload: true
   when: seed_job_result.changed or
         cac_result.changed or
         plugin_result.changed
@@ -122,7 +123,4 @@
   when: jenkins_custom_user_content is defined
   notify: restart jenkins
 
-- include: configure_git_for_jenkins_user.yml
-
-- include: create_prerequisites_for_terraform_slaves.yml
-  when: jenkins_terraform_path is defined
+- include_tasks: configure_git_for_jenkins_user.yml
