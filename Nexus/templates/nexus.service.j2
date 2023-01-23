@@ -1,0 +1,16 @@
+[Unit]
+  Description=nexus service
+  After=network.target
+  
+  [Service]
+  Type=forking
+  LimitNOFILE=65536
+  ExecStart=/opt/nexus-{{ nexus_version }}/bin/nexus start
+  ExecStop=/opt/nexus-{{ nexus_version }}/bin/nexus stop
+  User=nexus
+  Restart=on-abort
+  TimeoutSec=600
+  Environment="NEXUS_CASC_CONFIG=/opt/nexus.yml"
+  
+  [Install]
+  WantedBy=multi-user.target

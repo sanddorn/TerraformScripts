@@ -1,0 +1,399 @@
+---
+core:
+  baseUrl: {{ nexus_url }}
+  userAgentCustomization: "CasC test"
+  connectionTimeout: 60
+  connectionRetryAttempts: 10
+capabilities:
+  - type: analytics-configuration
+    enabled: true
+  - type: OutreachManagementCapability
+    enabled: false
+security:
+  anonymousAccess: false
+  pruneUsers: false
+  realms:
+    - name: "DockerToken"
+      enabled: true
+    - name: "NpmToken"
+      enabled: true
+  roles:
+    - id: repository-read-all
+      enabled: true
+      source: default
+      name: repository-read-all
+      description: "Read All permission for repositories"
+      privileges:
+        - nx-apikey-all
+        - nx-repository-view-*-*-browse
+        - nx-repository-view-*-*-read
+    - id: deployer
+      enabled: true
+      source: default
+      name: repository-write-all
+      description: "Write All permission for repositories"
+      privileges:
+        - nx-apikey-all
+        - nx-repository-view-*-*-*
+  users:
+    - username: "admin"
+      firstName: "Admin"
+      lastName: "User"
+      email: "admin@example.org"
+      updateExistingPassword: true
+      password: "{{ nexus_admin_password }}"
+      roles:
+        - source: default
+          role: nx-admin
+    - username: "reader"
+      firstName: "Reader"
+      lastName: "User"
+      email: "reader@example.org"
+      updateExistingPassword: true
+      password: "{{ nexus_reader_password }}"
+      roles:
+        - source: default
+          role: repository-read-all
+    - username: "jenkins"
+      firstName: "Herr"
+      lastName: "Jenkins"
+      email: "jenkins@example.org"
+      password: "{{ nexus_jenkins_password }}"
+      roles:
+        - source: default
+          role: deployer
+repository:
+  pruneBlobStores: false
+  blobStores:
+    - name: docker
+      type: File
+      attributes:
+        file:
+          path: docker
+        blobStoreQuotaConfig:
+          quotaLimitBytes: 10240000000
+          quotaType: spaceUsedQuota
+    - name: maven
+      type: File
+      attributes:
+        file:
+          path: maven
+        blobStoreQuotaConfig:
+          quotaLimitBytes: 10240000000
+          quotaType: spaceUsedQuota
+    - name: npm
+      type: File
+      attributes:
+        file:
+          path: npm
+        blobStoreQuotaConfig:
+          quotaLimitBytes: 10240000000
+          quotaType: spaceUsedQuota
+    - name: raw
+      type: File
+      attributes:
+        file:
+          path: raw
+        blobStoreQuotaConfig:
+          quotaLimitBytes: 10240000000
+          quotaType: spaceUsedQuota
+  pruneCleanupPolicies: false
+  cleanupPolicies:
+    - name: cleanup-everything
+      format: ALL_FORMATS
+      notes: ''
+      criteria:
+        lastDownloaded: 864000
+    - name: cleanup-docker-proxy
+      format: docker
+      notes: ''
+      criteria:
+        lastDownloaded: 864000
+    - name: cleanup-docker
+      format: docker
+      notes: ''
+      criteria:
+        lastDownloaded: 864000
+    - name: cleanup-maven-proxy
+      format: maven2
+      notes: ''
+      criteria:
+        lastDownloaded: 864000
+    - name: cleanup-npm-proxy
+      format: npm
+      notes: ''
+      criteria:
+        lastDownloaded: 864000
+    - name: cleanup-raw-proxy
+      format: raw
+      notes: ''
+      criteria:
+        lastDownloaded: 864000
+  pruneRepositories: false
+  repositories:
+    # https://help.sonatype.com/repomanager3/formats/apt-repositories
+    - name: chromedriver-dist
+      online: true
+      recipeName: raw-proxy
+      attributes:
+        raw:
+          contentDisposition: ATTACHMENT
+        proxy:
+          remoteUrl: https://chromedriver.storage.googleapis.com/
+          contentMaxAge: -1.0
+          metadataMaxAge: 1440.0
+        httpclient:
+          blocked: false
+          autoBlock: true
+          connection:
+            useTrustStore: false
+        storage:
+          blobStoreName: raw
+          strictContentTypeValidation: true
+        negativeCache:
+          enabled: true
+          timeToLive: 1440.0
+        cleanup:
+          policyName:
+            - cleanup-raw-proxy
+    - name: cypress-dist
+      online: true
+      recipeName: raw-proxy
+      attributes:
+        raw:
+          contentDisposition: ATTACHMENT
+        proxy:
+          remoteUrl: https://download.cypress.io/
+          contentMaxAge: -1.0
+          metadataMaxAge: 1440.0
+        httpclient:
+          blocked: false
+          autoBlock: true
+          connection:
+            useTrustStore: false
+        storage:
+          blobStoreName: raw
+          strictContentTypeValidation: true
+        negativeCache:
+          enabled: true
+          timeToLive: 1440.0
+        cleanup:
+          policyName:
+            - cleanup-raw-proxy
+    # https://help.sonatype.com/repomanager3/formats/docker-registry
+    - name: docker-snapshot
+      online: true
+      recipeName: docker-hosted
+      attributes:
+        docker:
+          forceBasicAuth: true  # Do not permit anonymous access to this repository
+          v1Enabled: true
+#          httpsPort: 8083  # Requires Nexus Jetty be configured to use SSL Certificates
+        storage:
+          blobStoreName: docker
+          strictContentTypeValidation: true
+          writePolicy: ALLOW
+        cleanup:
+          policyName:
+            - cleanup-docker
+    - name: docker-release
+      online: true
+      recipeName: docker-hosted
+      attributes:
+        docker:
+          forceBasicAuth: true  # Do not permit anonymous access to this repository
+          v1Enabled: true
+#          httpsPort: 8083  # Requires Nexus Jetty be configured to use SSL Certificates
+        storage:
+          blobStoreName: docker
+          strictContentTypeValidation: true
+          writePolicy: ALLOW_ONCE
+    - name: docker-proxy
+      online: true
+      recipeName: docker-proxy
+      attributes:
+        docker:
+          forceBasicAuth: false  # Allow anonymous access
+          v1Enabled: true
+        proxy:
+          remoteUrl: https://registry-1.docker.io
+          contentMaxAge: -1.0
+          metadataMaxAge: 1440.0
+        dockerProxy:
+          indexType: HUB
+          cacheForeignLayers: true
+          foreignLayerUrlWhitelist:
+            - '.*'
+        httpclient:
+          blocked: false
+          autoBlock: true
+          connection:
+            useTrustStore: false
+        storage:
+          blobStoreName: docker
+          strictContentTypeValidation: true
+        routingRules:
+          routingRuleId: null
+        negativeCache:
+          enabled: true
+          timeToLive: 1440.0
+        cleanup:
+          policyName:
+            - cleanup-docker-proxy
+    - name: docker
+      online: true
+      recipeName: docker-group
+      attributes:
+        docker:
+          forceBasicAuth: false  # Each repo uses its own setting
+          v1Enabled: true
+        storage:
+          blobStoreName: docker
+          strictContentTypeValidation: true
+        group:
+          memberNames:
+            - "docker-snapshot"
+            - "docker-release"
+            - "docker-proxy"
+    - name: maven-snapshots
+      online: true
+      recipeName: maven2-hosted
+      attributes:
+        maven:
+          versionPolicy: SNAPSHOT
+          layoutPolicy: STRICT
+        storage:
+          writePolicy: ALLOW
+          strictContentTypeValidation: true
+          blobStoreName: maven
+    - name: maven-releases
+      online: true
+      recipeName: maven2-hosted
+      attributes:
+        maven:
+          versionPolicy: RELEASE
+          layoutPolicy: STRICT
+        storage:
+          writePolicy: ALLOW_ONCE
+          strictContentTypeValidation: true
+          blobStoreName: maven
+    - name: maven-central
+      online: true
+      recipeName: maven2-proxy
+      attributes:
+        proxy:
+          contentMaxAge: -1
+          remoteUrl: https://repo1.maven.org/maven2/
+          metadataMaxAge: 1440
+        negativeCache:
+          timeToLive: 1440
+          enabled: true
+        storage:
+          strictContentTypeValidation: false
+          blobStoreName: maven
+        httpclient:
+          connection:
+            blocked: false
+            autoBlock: true
+        maven:
+          versionPolicy: RELEASE
+          layoutPolicy: PERMISSIVE
+        cleanup:
+          policyName:
+            - cleanup-maven-proxy
+    - name: maven
+      online: true
+      recipeName: maven2-group
+      attributes:
+        maven:
+          versionPolicy: MIXED
+        group:
+          memberNames:
+            - "maven-snapshots"
+            - "maven-releases"
+            - "maven-central"
+        storage:
+          blobStoreName: maven
+    # https://help.sonatype.com/repomanager3/formats/npm-registry
+    - name: npm-snapshot
+      online: true
+      recipeName: npm-hosted
+      attributes:
+        storage:
+          blobStoreName: npm
+          strictContentTypeValidation: true
+          writePolicy: ALLOW
+        cleanup:
+          policyName:
+            - cleanup-npm
+    - name: npm-release
+      online: true
+      recipeName: npm-hosted
+      attributes:
+        storage:
+          blobStoreName: npm
+          strictContentTypeValidation: true
+          writePolicy: ALLOW_ONCE
+        cleanup:
+          policyName:
+            - cleanup-npm
+    - name: npm-proxy
+      online: true
+      recipeName: npm-proxy
+      attributes:
+        proxy:
+          remoteUrl: https://registry.npmjs.org
+          contentMaxAge: -1.0
+          metadataMaxAge: 1440.0
+        httpclient:
+          blocked: false
+          autoBlock: true
+          connection:
+            useTrustStore: false
+        storage:
+          blobStoreName: npm
+          strictContentTypeValidation: true
+        routingRules:
+          routingRuleId: null
+        negativeCache:
+          enabled: true
+          timeToLive: 1440.0
+        cleanup:
+          policyName:
+            - cleanup-npm-proxy
+    - name: npm
+      online: true
+      recipeName: npm-group
+      attributes:
+        storage:
+          blobStoreName: npm
+          strictContentTypeValidation: true
+        group:
+          memberNames:
+            - "npm-proxy"
+            - "npm-snapshot"
+            - "npm-release"
+    - name: nodejs-dist
+      online: true
+      recipeName: raw-proxy
+      attributes:
+        raw:
+          contentDisposition: ATTACHMENT
+        proxy:
+          remoteUrl: https://nodejs.org/dist/
+          contentMaxAge: -1.0
+          metadataMaxAge: 1440.0
+        httpclient:
+          blocked: false
+          autoBlock: true
+          connection:
+            useTrustStore: false
+        storage:
+          blobStoreName: raw
+          strictContentTypeValidation: true
+        negativeCache:
+          enabled: true
+          timeToLive: 1440.0
+        cleanup:
+          policyName:
+            - cleanup-raw-proxy

@@ -32,3 +32,4 @@ override.tf.json
 
 .terraform.lock.hcl
 /Consul/files/
+/Nexus/vars/nexus-secrets.yml
