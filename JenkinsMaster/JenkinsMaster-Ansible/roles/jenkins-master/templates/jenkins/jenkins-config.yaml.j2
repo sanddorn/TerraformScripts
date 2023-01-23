@@ -25,11 +25,11 @@ jenkins:
             mode: NORMAL
             name: "agent"
             network: "net=jenkins"
-            numExecutors: 4
+            numExecutors: 8
             remoteFs: "/Jenkins"
             serverType: "cx41"
             shutdownPolicy: "hour-wrap"
-  numExecutors: {{ ansible_facts.processor_vcpus }}
+  numExecutors: {{ ansible_facts.processor_vcpus * 2 | int }}
   primaryView:
     all:
       name: "all"
