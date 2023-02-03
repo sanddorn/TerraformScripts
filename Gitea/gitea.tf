@@ -4,6 +4,10 @@ terraform {
       source  = "digitalocean/digitalocean"
       version = "2.7.0"
     }
+    hetznerdns = {
+      source = "timohirt/hetznerdns"
+      version = "2.2.0"
+    }
   }
 }
 
@@ -11,6 +15,12 @@ variable "username" {
   type        = string
   description = "ansible user"
   default     = "ansible"
+}
+
+variable "dns_name" {
+  type        = string
+  description = "dns name"
+  default     = "nexus.development.bermuda.de"
 }
 
 variable "ssh_key" {
@@ -28,8 +38,21 @@ variable "do_token" {
   description = "Token to the DO Cloud API"
 }
 
+variable "hetzner_dns_token" {
+  type = string
+  description = "Hetzner API Token"
+}
+
 provider "digitalocean" {
   token = var.do_token
+}
+
+provider "hetznerdns" {
+  apitoken  = var.hetzner_dns_token
+}
+
+data "hetznerdns_zone" "bermuda_zone" {
+  name = "bermuda.de"
 }
 
 data "digitalocean_ssh_key" "gitea" {
@@ -102,9 +125,17 @@ resource "digitalocean_volume_attachment" "gitea-data" {
   volume_id  = digitalocean_volume.gitea-data.id
 }
 
+resource "hetznerdns_record" "nexus" {
+  zone_id = data.hetznerdns_zone.bermuda_zone.id
+  name    = "${var.dns_name}."
+  type    = "A"
+  ttl     = 60
+  value   = digitalocean_droplet.gitea_server.ipv4_address
+}
+
 resource "null_resource" "install_gitea" {
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${digitalocean_droplet.gitea_server.ipv4_address},' -e ansible_user=${var.username} main.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${digitalocean_droplet.gitea_server.ipv4_address},' -e server_domain=${var.dns_name} -e ansible_user=${var.username} main.yml"
   }
   depends_on = [digitalocean_droplet.gitea_server]
 }
