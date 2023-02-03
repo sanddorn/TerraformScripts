@@ -1,0 +1,87 @@
+---
+# tasks file for nginx
+- name: Generate dhparams/
+  async: 900
+  become: yes
+  poll: 0
+  register: dhparams_task
+  shell: openssl dhparam -out /etc/ssl/dhparams4096.pem 4096
+  args:
+    creates: /etc/ssl/dhparams4096.pem
+
+- name: Install nginx
+  become: yes
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: latest
+
+- name: Configure Nginx
+  become: yes
+  template:
+    src: templates/nginx.conf-pre-certbot.j2
+    dest: "/etc/nginx/sites-available/{{ web_base_name }}"
+    mode: 0644
+
+- name: Remove default nginx config
+  become: yes
+  file:
+    name: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Enable Nexus Nginx Config
+  become: yes
+  file:
+    src: "/etc/nginx/sites-available/{{ web_base_name }}"
+    dest: "/etc/nginx/sites-enabled/{{ web_base_name }}"
+    state: link
+
+- name: Restart Nginx
+  become: yes
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes
+
+- name: Install certificate
+  become: yes
+  shell: certbot run --nginx -d {{ web_base_name }} --agree-tos --email nils.bokermann+certbot@bermuda.de --non-interactive
+  args:
+    creates: /etc/letsencrypt/live/{{ web_base_name }}/fullchain.pem
+  ignore_errors: yes
+
+- name: Generate dhparams/
+  become: yes
+  shell: openssl dhparam -out /etc/ssl/dhparams4096.pem 4096
+  args:
+    creates: /etc/ssl/dhparams4096.pem
+
+- name: Configure Nginx Final
+  become: yes
+  template:
+    src: templates/nginx.conf.j2
+    dest: "/etc/nginx/sites-available/{{ web_base_name }}"
+    mode: 0644
+
+- name: Wait for dhparams
+  async_status:
+    jid: "{{ dhparams_task.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 100
+  delay: 10
+
+- name: Reload nginx to activate specified site
+  become: yes
+  service:
+    name: nginx
+    state: restarted
+
+- name: Add letsencrypt cronjob for cert renewal
+  become: yes
+  cron:
+    name: letsencrypt_renewal
+    special_time: weekly
+    job: letsencrypt --renew -n --nginx

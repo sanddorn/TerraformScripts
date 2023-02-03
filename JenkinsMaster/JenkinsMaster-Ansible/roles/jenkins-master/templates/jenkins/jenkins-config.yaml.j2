@@ -6,7 +6,7 @@ jenkins:
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
-  labelString: "build"
+  labelString: "build, built-in"
   mode: EXCLUSIVE
   clouds:
     - hetzner:
@@ -15,19 +15,21 @@ jenkins:
         name: "hetzner"
         serverTemplates:
           - bootDeadline: 15
+            connectivity: "both"
             connector:
               root:
-                connectionMethod: "default"
+                connectionMethod: "public"
                 sshCredentialsId: "jenkins-ssh"
             image: "jenkins=agent"
-            labelStr: "nbg,cx41"
-            location: "nbg1"
+            labelStr: "ash,cpx31"
+            location: "ash"
             mode: NORMAL
             name: "agent"
             network: "net=jenkins"
             numExecutors: 8
+            primaryIp: "default"
             remoteFs: "/Jenkins"
-            serverType: "cx41"
+            serverType: "cpx31"
             shutdownPolicy: "hour-wrap"
   numExecutors: {{ ansible_facts.processor_vcpus * 2 | int }}
   primaryView:
@@ -42,7 +44,24 @@ jenkins:
             - key: PATH
               value: "{{ jenkins_extra_path }}"
   {% endif %}
-  securityRealm: "keycloak"
+  securityRealm:
+    oic:
+      authorizationServerUrl: "https://{{ jenkins_oicd_server }}/realms/{{ jenkins_oicd_realm }}/protocol/openid-connect/auth"
+      automanualconfigure: "auto"
+      clientId: "{{ jenkins_oicd_client_id }}"
+      clientSecret: "{{ jenkins_oicd_client_secret }}"
+      disableSslVerification: false
+      endSessionEndpoint: "https://{{ jenkins_oicd_server }}/realms/{{ jenkins_oicd_realm }}/protocol/openid-connect/logout"
+      fullNameFieldName: "name"
+      groupsFieldName: "email"
+      userNameField: "preferred_username"
+      logoutFromOpenidProvider: false
+      scopes: "web-origins acr address phone openid roles profile offline_access microprofile-jwt\
+            \ email"
+      tokenAuthMethod: "client_secret_post"
+      tokenServerUrl: "https://{{ jenkins_oicd_server }}/realms/{{ jenkins_oicd_realm }}/protocol/openid-connect/token"
+      userInfoServerUrl: "https://{{ jenkins_oicd_server }}/realms/{{ jenkins_oicd_realm }}/protocol/openid-connect/userinfo"
+      wellKnownOpenIDConfigurationUrl: "https://{{ jenkins_oicd_server }}/realms/{{ jenkins_oicd_realm }}/.well-known/openid-configuration"
   slaveAgentPort: 0
   updateCenter:
     sites:
@@ -151,18 +170,6 @@ unclassified:
         name: "gitlab"
         apiTokenId: "gitlab-api"
         url: "https://gitlab.bermuda.de"
-  keycloakSecurityRealm:
-    keycloakJson: |-
-      {
-        "realm": "{{ jenkins_keycloak_realm}}",
-        "auth-server-url": "{{ jenkins_keycloak_auth_url }}",
-        "ssl-required": "external",
-        "resource": "Jenkins",
-        "public-client": true,
-        "confidential-port": 0
-      }
-    keycloakRespectAccessTokenTimeout: true
-    keycloakValidate: false
   globalConfigFiles:
     configs:
       - npm:
@@ -277,7 +284,7 @@ unclassified:
           skipScmCause: false
           skipUpstreamCause: false
 tool:
-  ansibleInstallation:
+  ansible:
     installations:
       - name: "Ansible-2.9.5"
         properties:

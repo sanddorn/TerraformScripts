@@ -1,6 +1,6 @@
 jenkins_home: "/opt/jenkins"
 jenkins_http_port: "8080"
-jenkins_url: "https://jenkins.bermuda.de"
+#jenkins_url: "https://jenkins.bermuda.de"
 
 jenkins_admin_password: admin123
 jenkins_admin_username: admin
@@ -41,7 +41,7 @@ jenkins_plugins: "git
                   ssh-agent
                   configuration-as-code
                   configuration-as-code-groovy
-                  keycloak
+                  oic-auth
                   pipeline-utility-steps
                   ssh-agent
                   startup-trigger-plugin
@@ -50,11 +50,12 @@ jenkins_plugins: "git
                   nexus-jenkins-plugin
                   slack                  
                   prometheus
-                  http-request-plugin"
+                  http-request-plugin
+                  http_request"
 
 jenkins_user_name: "Herr Jenkins"
 jenkins_user_email: "jenkins@bermuda.de"
 
-jenkins_keycloak_realm: "Development"
-jenkins_keycloak_auth_url: "https://sso.bermuda.de/"
-
+jenkins_oicd_realm: "Development"
+jenkins_oicd_client_id: "Jenkins"
+jenkins_oicd_server: "sso.bermuda.de"

@@ -1,4 +1,5 @@
 ---
+jenkins_systemd_config_path: /lib/systemd/system/jenkins.service
 jenkins_global_config_path: /etc/default/jenkins
 http_port_config_key: "HTTP_PORT"
 java_options_config_key: "JAVA_ARGS"
