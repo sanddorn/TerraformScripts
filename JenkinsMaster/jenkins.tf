@@ -57,18 +57,33 @@ data "hetznerdns_zone" "bermuda_zone" {
   name = "bermuda.de"
 }
 
-resource "hcloud_network" "jenkins" {
-  name     = "jenkins"
+resource "hcloud_network" "jenkins_us" {
+  name     = "jenkins_us"
   ip_range = "10.0.0.0/24"
   labels = {
-    net="jenkins"
+    net="jenkins_us"
   }
 }
 
-resource "hcloud_network_subnet" "jenkins_agent" {
+resource "hcloud_network_subnet" "jenkins_agent_us" {
   ip_range     = "10.0.0.128/25"
-  network_id   = hcloud_network.jenkins.id
+  network_id   = hcloud_network.jenkins_us.id
   network_zone = "us-east"
+  type         = "cloud"
+}
+
+resource "hcloud_network" "jenkins_de" {
+  name     = "jenkins_de"
+  ip_range = "10.0.0.0/24"
+  labels = {
+    net="jenkins_de"
+  }
+}
+
+resource "hcloud_network_subnet" "jenkins_agent_de" {
+  ip_range     = "10.0.0.128/25"
+  network_id   = hcloud_network.jenkins_de.id
+  network_zone = "eu-central"
   type         = "cloud"
 }
 
@@ -78,10 +93,14 @@ resource "hcloud_server" "jenkins" {
   server_type = "cx11"
   location = "nbg1"
 
+  network {
+    network_id = hcloud_network.jenkins_de.id
+  }
+
   ssh_keys = data.hcloud_ssh_keys.ssh_root_keys.ssh_keys.*.name
 
   depends_on = [
-    hcloud_network.jenkins
+    hcloud_network.jenkins_de
   ]
 
   provisioner "remote-exec" {

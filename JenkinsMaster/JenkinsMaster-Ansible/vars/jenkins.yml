@@ -50,8 +50,8 @@ jenkins_plugins: "git
                   nexus-jenkins-plugin
                   slack                  
                   prometheus
-                  http-request-plugin
-                  http_request"
+                  http_request
+                  kubernetes-cli"
 
 jenkins_user_name: "Herr Jenkins"
 jenkins_user_email: "jenkins@bermuda.de"

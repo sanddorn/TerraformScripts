@@ -36,15 +36,15 @@
 - name: Setup Jenkins HTTP port
   lineinfile:
     path: "{{ jenkins_systemd_config_path }}"
-    regexp: '^#{0,1}Environment="HTTP_PORT='
-    line: 'Environment="HTTP_PORT={{ jenkins_http_port }}"'
+    regexp: '^#{0,1}Environment="JENKINS_PORT='
+    line: 'Environment="JENKINS_PORT={{ jenkins_http_port }}"'
   notify: restart jenkins
 
 - name: Setup Java Args / Options
   lineinfile:
     path: "{{ jenkins_systemd_config_path }}"
-    regexp: '^#{0,1}Environment="JENKINS_OPTS='
-    line: 'Environment="JENKINS_OPTS=-Xmx2048m'
+    regexp: '^#{0,1}Environment="JAVA_OPTS='
+    line: 'Environment="JAVA_OPTS=-Djava.awt.headless=true -Xmx2048m'
   notify: restart jenkins
 
 - name: Setup Jenkins Bind Address

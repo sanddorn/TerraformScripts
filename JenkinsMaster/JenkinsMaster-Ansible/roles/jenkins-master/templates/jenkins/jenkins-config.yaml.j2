@@ -20,16 +20,32 @@ jenkins:
               root:
                 connectionMethod: "public"
                 sshCredentialsId: "jenkins-ssh"
-            image: "jenkins=agent"
-            labelStr: "ash,cpx31"
-            location: "ash"
+            image: "jenkins=agent_us"
             mode: NORMAL
-            name: "agent"
-            network: "net=jenkins"
+            labelStr: "owasp"
+            location: "ash"
+            name: "OWASP-Agent"
+            network: "net=jenkins_us"
             numExecutors: 8
             primaryIp: "default"
             remoteFs: "/Jenkins"
             serverType: "cpx31"
+            shutdownPolicy: "hour-wrap"
+          - bootDeadline: 15
+            connectivity: "both"
+            connector:
+              root:
+                connectionMethod: "public"
+                sshCredentialsId: "jenkins-ssh"
+            image: "jenkins=agent_de"
+            labelStr: "non-owasp"
+            location: "nbg1"
+            name: "Worker"
+            network: "net=jenkins_de"
+            numExecutors: 8
+            primaryIp: "default"
+            remoteFs: "/Jenkins"
+            serverType: "cx41"
             shutdownPolicy: "hour-wrap"
   numExecutors: {{ ansible_facts.processor_vcpus * 2 | int }}
   primaryView:
@@ -83,6 +99,7 @@ security:
       - "method java.net.HttpURLConnection getResponseCode"
       - "method java.net.URL openConnection"
       - "method jenkins.model.Jenkins getComputers"
+      - "method hudson.model.ItemGroup getItem java.lang.String"
       - "staticField hudson.security.ACL SYSTEM"
       - "staticMethod com.cloudbees.plugins.credentials.CredentialsProvider lookupCredentials\
        \ java.lang.Class hudson.model.Item org.acegisecurity.Authentication"
@@ -160,6 +177,18 @@ credentials:
               id: "e2e-cypress-key"
               scope: GLOBAL
               secret: "{{ jenkins_e2e_cypress_key }}"
+          - file:
+              fileName: "jenkins-seckey.pgp"
+              id: "helm-pgp-key"
+              scope: GLOBAL
+              secretBytes: |
+                {{ jenkins_helm_pgp_key | indent( width=16) }}
+          - file:
+              fileName: "kube_config"
+              id: "kube-config"
+              scope: GLOBAL
+              secretBytes: |
+                {{ jenkins_kube_config | indent( width=16)}}
 unclassified:
   gitLabConnectionConfig:
     connections:
@@ -206,7 +235,7 @@ unclassified:
               <mirror>
                     <mirrorOf>*</mirrorOf>
                     <name>Bermuda Nexus</name>
-                    <url>https://nexus.bermuda.de/repository/maven-public/</url>
+                    <url>https://nexus.bermuda.de/repository/bermuda-maven-group/</url>
                     <id>bermuda-mirror</id>
                   </mirror>
               </mirrors>
