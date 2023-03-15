@@ -1,0 +1,70 @@
+---
+# tasks file for kubernetes
+
+- name: install k8s key
+  become: yes
+  ansible.builtin.get_url:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    dest: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+    mode: '0644'
+
+- name: add k8s repository
+  become: yes
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+    update_cache: yes
+
+- name: install kubectl
+  become: yes
+  ansible.builtin.apt:
+    name: kubectl
+    state: latest
+    update_cache: yes
+
+- name: install helm key
+  become: yes
+  ansible.builtin.get_url:
+    url: https://baltocdn.com/helm/signing.asc
+    dest: /tmp/helm.asc
+    mode: '0644'
+
+- name: install helm key
+  become: yes
+  shell: "gpg --dearmor > /etc/apt/keyrings/helm-archive-keyring.gpg < /tmp/helm.asc"
+
+- name: add helm repository
+  become: yes
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/etc/apt/keyrings/helm-archive-keyring.gpg] https://baltocdn.com/helm/stable/debian/ all main
+    state: present
+    update_cache: yes
+
+- name: install helm
+  become: yes
+  ansible.builtin.apt:
+    name: helm
+    state: latest
+    update_cache:
+
+- name: download sops
+  become: yes
+  get_url:
+    url: https://github.com/mozilla/sops/releases/download/v3.7.3/sops_3.7.3_amd64.deb
+    dest: /tmp/sops.deb
+
+- name: install sops
+  become: yes
+  apt:
+    deb: /tmp/sops.deb
+
+- name: install helm secrets plugin
+  become: yes
+  shell: "su jenkins -c 'helm plugin install https://github.com/jkroepke/helm-secrets'"
+  ignore_errors: yes
+
+
+- name: install helm push plugin
+  become: yes
+  shell: "su jenkins -c 'helm plugin install https://github.com/chartmuseum/helm-push'"
+  ignore_errors: yes
