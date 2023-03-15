@@ -81,6 +81,14 @@ repository:
         blobStoreQuotaConfig:
           quotaLimitBytes: 10240000000
           quotaType: spaceUsedQuota
+    - name: helm
+      type: File
+      attributes:
+        file:
+          path: helm
+        blobStoreQuotaConfig:
+          quotaLimitBytes: 10240000000
+          quotaType: spaceUsedQuota
     - name: npm
       type: File
       attributes:
@@ -111,6 +119,11 @@ repository:
         lastDownloaded: 864000
     - name: cleanup-docker
       format: docker
+      notes: ''
+      criteria:
+        lastDownloaded: 864000
+    - name: cleanup-helm
+      format: helm
       notes: ''
       criteria:
         lastDownloaded: 864000
@@ -181,13 +194,14 @@ repository:
           policyName:
             - cleanup-raw-proxy
     # https://help.sonatype.com/repomanager3/formats/docker-registry
-    - name: docker-snapshot
+    - name: {{ nexus_docker_snapshot_name }}
       online: true
       recipeName: docker-hosted
       attributes:
         docker:
           forceBasicAuth: true  # Do not permit anonymous access to this repository
           v1Enabled: true
+          httpPort: {{ nexus_docker_snapshot_port }}
 #          httpsPort: 8083  # Requires Nexus Jetty be configured to use SSL Certificates
         storage:
           blobStoreName: docker
@@ -196,19 +210,20 @@ repository:
         cleanup:
           policyName:
             - cleanup-docker
-    - name: docker-release
+    - name: {{ nexus_docker_release_name }}
       online: true
       recipeName: docker-hosted
       attributes:
         docker:
           forceBasicAuth: true  # Do not permit anonymous access to this repository
           v1Enabled: true
+          httpPort: {{ nexus_docker_release_port }}
 #          httpsPort: 8083  # Requires Nexus Jetty be configured to use SSL Certificates
         storage:
           blobStoreName: docker
           strictContentTypeValidation: true
           writePolicy: ALLOW_ONCE
-    - name: docker-proxy
+    - name: {{ nexus_docker_proxy_name }}
       online: true
       recipeName: docker-proxy
       attributes:
@@ -240,22 +255,23 @@ repository:
         cleanup:
           policyName:
             - cleanup-docker-proxy
-    - name: docker
+    - name: {{ nexus_docker_group_name }}
       online: true
       recipeName: docker-group
       attributes:
         docker:
           forceBasicAuth: false  # Each repo uses its own setting
           v1Enabled: true
+          httpPort: {{ nexus_docker_group_port }}
         storage:
           blobStoreName: docker
           strictContentTypeValidation: true
         group:
           memberNames:
-            - "docker-snapshot"
-            - "docker-release"
-            - "docker-proxy"
-    - name: maven-snapshots
+            - "{{ nexus_docker_snapshot_name }}"
+            - "{{ nexus_docker_release_name }}"
+            - "{{ nexus_docker_proxy_name }}"
+    - name: {{ nexus_maven_snapshot_name }}
       online: true
       recipeName: maven2-hosted
       attributes:
@@ -266,7 +282,7 @@ repository:
           writePolicy: ALLOW
           strictContentTypeValidation: true
           blobStoreName: maven
-    - name: maven-releases
+    - name: {{ nexus_maven_release_name}}
       online: true
       recipeName: maven2-hosted
       attributes:
@@ -277,7 +293,7 @@ repository:
           writePolicy: ALLOW_ONCE
           strictContentTypeValidation: true
           blobStoreName: maven
-    - name: maven-central
+    - name: {{nexus_maven_central_proxy_name }}
       online: true
       recipeName: maven2-proxy
       attributes:
@@ -301,7 +317,7 @@ repository:
         cleanup:
           policyName:
             - cleanup-maven-proxy
-    - name: maven
+    - name: {{ nexus_maven_group_name}}
       online: true
       recipeName: maven2-group
       attributes:
@@ -309,13 +325,13 @@ repository:
           versionPolicy: MIXED
         group:
           memberNames:
-            - "maven-snapshots"
-            - "maven-releases"
-            - "maven-central"
+            - "{{ nexus_maven_snapshot_name }}"
+            - "{{ nexus_maven_release_name }}"
+            - "{{ nexus_maven_central_proxy_name }}"
         storage:
           blobStoreName: maven
     # https://help.sonatype.com/repomanager3/formats/npm-registry
-    - name: npm-snapshot
+    - name: {{ nexus_npm_snapshot_name }}
       online: true
       recipeName: npm-hosted
       attributes:
@@ -326,7 +342,7 @@ repository:
         cleanup:
           policyName:
             - cleanup-npm
-    - name: npm-release
+    - name: {{ nexus_npm_release_name }}
       online: true
       recipeName: npm-hosted
       attributes:
@@ -337,7 +353,7 @@ repository:
         cleanup:
           policyName:
             - cleanup-npm
-    - name: npm-proxy
+    - name: {{ nexus_npm_proxy_name }}
       online: true
       recipeName: npm-proxy
       attributes:
@@ -361,7 +377,7 @@ repository:
         cleanup:
           policyName:
             - cleanup-npm-proxy
-    - name: npm
+    - name: {{ nexus_npm_group_name }}
       online: true
       recipeName: npm-group
       attributes:
@@ -370,9 +386,31 @@ repository:
           strictContentTypeValidation: true
         group:
           memberNames:
-            - "npm-proxy"
-            - "npm-snapshot"
-            - "npm-release"
+            - "{{ nexus_npm_snapshot_name }}"
+            - "{{ nexus_npm_release_name }}"
+            - "{{ nexus_npm_proxy_name }}"
+    - name: {{ nexus_helm_snapshot_name }}
+      online: true
+      recipeName: helm-hosted
+      attributes:
+          storage:
+            blobStoreName: helm
+            strictContentTypeValidation: true
+            writePolicy: ALLOW
+          cleanup:
+            policyName:
+              - cleanup-helm
+    - name: {{ nexus_helm_release_name }}
+      online: true
+      recipeName: helm-hosted
+      attributes:
+        storage:
+          blobStoreName: helm
+          strictContentTypeValidation: true
+          writePolicy: ALLOW_ONCE
+        cleanup:
+          policyName:
+            - cleanup-helm
     - name: nodejs-dist
       online: true
       recipeName: raw-proxy

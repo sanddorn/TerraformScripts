@@ -3,15 +3,30 @@
     - vars/nexus.yml
     - vars/nexus-secrets.yml
   tasks:
+    - name: add swapspace
+      become: yes
+      ansible.builtin.shell: fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+      args:
+        creates: /swapfile
+
+    - name: add swap to fstab
+      become: yes
+      lineinfile:
+        path: /etc/fstab
+        line: '/swapfile none swap sw 0 0'
+        create: yes
+        state: present
+
     - name: install extra packets
       become: yes
       apt:
         name:
-          - openjdk-8-jdk
+          - openjdk-8-jre
           - nginx
           - certbot
           - python3-certbot-nginx
         state: latest
+        update_cache: yes
 
     - name: Set Nexus URL
       set_fact:
@@ -40,11 +55,19 @@
         dest: /opt
         remote_src: yes
 
+    - name: Create Nexus Working Dir
+      become: yes
+      file:
+        path: /opt/sonatype-work/nexus3
+        state: directory
+        owner: nexus
+        group: nexus
+
     - name: Configure Nexus Properties
       become: yes
       template:
         src: templates/nexus.properties.j2
-        dest: "/opt/nexus-{{ nexus_version }}/etc/nexus.properties"
+        dest: "/opt/sonatype/nexus3/etc/nexus.properties"
 
     - name: Change owner of nexus working dir
       become: yes

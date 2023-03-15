@@ -1,6 +1,8 @@
   server {
-    listen *:80;
-    listen *:443 ssl;
+  listen {{ nexus_ipv4_address }}:80;
+  listen {{ nexus_ipv4_address }}:443 ssl;
+  listen [{{ nexus_ipv6_address }}]:80;
+  listen [{{ nexus_ipv6_address }}]:443 ssl;
   
     ssl_certificate /etc/letsencrypt/live/{{ nexus_base_name }}/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/{{ nexus_base_name }}/privkey.pem; # managed by Certbot
@@ -33,14 +35,16 @@
       proxy_set_header X-Forwarded-For        $proxy_add_x_forwarded_for;
       proxy_set_header X-Forwarded-Proto      $scheme;
       proxy_pass http://127.0.0.1:8081/;
-      proxy_redirect      http://127.0.0.1:8081/ http://nexus.bermuda.de/;
+      proxy_redirect      default;
       client_max_body_size 1024M;
     }
   }
     
     
   server {
-    listen *:{{ nexus_docker_group_port }} ssl;
+    listen {{ nexus_ipv4_address }}:{{ nexus_docker_group_port }} ssl;
+    listen [{{ nexus_ipv6_address }}]:{{ nexus_docker_group_port }} ssl;
+
   
     ssl_certificate /etc/letsencrypt/live/{{ nexus_base_name }}/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/{{ nexus_base_name }}/privkey.pem; # managed by Certbot
@@ -49,10 +53,6 @@
   root /var/www/html;
     
     server_name {{ nexus_base_name }};
-  
-    location ~ ^/(v1|v2)/  {
-      rewrite ^/(.*)$ /repository/docker/$1;
-    }
   
     location / {
       proxy_set_header Host                   $host;
@@ -60,15 +60,16 @@
       proxy_set_header X-Forwarded-For        $proxy_add_x_forwarded_for;
       proxy_set_header X-Forwarded-Proto      $scheme;
       proxy_hide_header www-authenticate;
-      add_header 'WWW-Authenticate' 'Bearer realm="https://nexus.development.bermuda.de:{{ nexus_docker_group_port }}/v2/token",service="https://nexus.development.bermuda.de:{{ nexus_docker_group_port }}/v2/token"' always;
+      add_header 'WWW-Authenticate' 'Bearer realm="https://{{ nexus_base_name }}:{{ nexus_docker_group_port }}/v2/token",service="https://{{ nexus_base_name }}:{{ nexus_docker_group_port }}/v2/token"' always;
   
-  proxy_pass http://127.0.0.1:80;
+      proxy_pass http://127.0.0.1:{{ nexus_docker_group_port }};
       client_max_body_size 1024M;
-  }
+    }
   }
     
-    server {
-    listen *:{{ nexus_docker_snapshot_port }} ssl;
+  server {
+    listen {{ nexus_ipv4_address }}:{{ nexus_docker_snapshot_port }} ssl;
+    listen [{{ nexus_ipv6_address }}]:{{ nexus_docker_snapshot_port }} ssl;
   
     ssl_certificate /etc/letsencrypt/live/{{ nexus_base_name }}/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/{{ nexus_base_name }}/privkey.pem; # managed by Certbot
@@ -76,10 +77,6 @@
   root /var/www/html;
     
     server_name {{ nexus_base_name }};
-
-    location ~ ^/(v1|v2)/  {
-      rewrite ^/(.*)$ /repository/docker-snapshot/$1;
-    }
   
     location / {
     proxy_set_header Host                   $host;
@@ -87,14 +84,15 @@
     proxy_set_header X-Forwarded-For        $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto      $scheme;    
     proxy_hide_header www-authenticate;
-    add_header 'WWW-Authenticate' 'Bearer realm="https://nexus.development.bermuda.de:{{ nexus_docker_snapshot_port }}/v2/token",service="https://nexus.development.bermuda.de:{{ nexus_docker_snapshot_port }}/v2/token"' always;   
-    proxy_pass http://127.0.0.1:80;
+    add_header 'WWW-Authenticate' 'Bearer realm="https://{{ nexus_base_name }}:{{ nexus_docker_group_port }}/v2/token",service="https://{{ nexus_base_name }}:{{ nexus_docker_group_port }}/v2/token"' always;   
+    proxy_pass http://127.0.0.1:{{ nexus_docker_snapshot_port }};
     client_max_body_size 1024M;
   }
   }
     
     server {
-    listen *:{{ nexus_docker_release_port }} ssl;
+    listen {{ nexus_ipv4_address }}:{{ nexus_docker_release_port }} ssl;
+    listen [{{ nexus_ipv6_address }}]:{{ nexus_docker_release_port }} ssl;
   
   ssl_certificate /etc/letsencrypt/live/{{ nexus_base_name }}/fullchain.pem; # managed by Certbot
   ssl_certificate_key /etc/letsencrypt/live/{{ nexus_base_name }}/privkey.pem; # managed by Certbot
@@ -103,10 +101,6 @@
   root /var/www/html;
     
     server_name {{ nexus_base_name }};
-  
-    location ~ ^/(v1|v2)/  {
-      rewrite ^/(.*)$ /repository/docker-release/$1;
-    }
     
     location / {
     proxy_set_header Host                   $host;
@@ -114,8 +108,8 @@
     proxy_set_header X-Forwarded-For        $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto      $scheme;
     proxy_hide_header www-authenticate;
-    add_header 'WWW-Authenticate' 'Bearer realm="https://nexus.development.bermuda.de:{{ nexus_docker_release_port }}/v2/token",service="https://nexus.development.bermuda.de:{{ nexus_docker_release_port }}/v2/token"' always;
-    proxy_pass http://127.0.0.1:80;
+    add_header 'WWW-Authenticate' 'Bearer realm="https://{{ nexus_base_name }}:{{ nexus_docker_release_port }}/v2/token",service="https://{{ nexus_base_name }}:{{ nexus_docker_release_port }}/v2/token"' always;
+    proxy_pass http://127.0.0.1:{{ nexus_docker_release_port }};
     client_max_body_size 1024M;
   }
   }

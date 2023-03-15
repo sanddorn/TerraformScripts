@@ -1,5 +1,24 @@
 nexus_base_name: nexus.development.bermuda.de
+
 nexus_docker_snapshot_port: 5001
+nexus_docker_snapshot_name: bermuda-docker-snapshot
 nexus_docker_release_port: 5002
+nexus_docker_release_name: bermuda-docker-release
 nexus_docker_group_port: 5000
+nexus_docker_proxy_name: docker-hub-proxy
+nexus_docker_group_name: docker-group
+
+nexus_maven_snapshot_name: bermuda-maven-snapshot
+nexus_maven_release_name: bermuda-maven-release
+nexus_maven_central_proxy_name: maven-central-proxy
+nexus_maven_group_name: bermuda-maven-group
+
+nexus_npm_snapshot_name: npm-bermuda-snapshot
+nexus_npm_release_name: npm-bermuda-release
+nexus_npm_group_name: npm-registry
+nexus_npm_proxy_name: npm-proxy
+
+nexus_helm_snapshot_name: bermuda-helm-snapshot
+nexus_helm_release_name: bermuda-helm-release
+
 nexus_version: 3.45.0-01

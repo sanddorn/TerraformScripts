@@ -1,11 +1,11 @@
 terraform {
   required_providers {
-    digitalocean = {
-      source  = "digitalocean/digitalocean"
-      version = "2.7.0"
+    hcloud = {
+      source  = "hetznercloud/hcloud"
+      version = "1.36.2"
     }
     hetznerdns = {
-      source = "timohirt/hetznerdns"
+      source  = "timohirt/hetznerdns"
       version = "2.2.0"
     }
   }
@@ -33,53 +33,47 @@ variable "ssh_root_key_selector" {
   default = ""
 }
 
-variable "do_token" {
+variable "hcloud_token" {
   type        = string
-  description = "Token to the DO Cloud API"
+  description = "Token to the Hetzner Cloud API"
 }
 
 variable "hetzner_dns_token" {
-  type = string
+  type        = string
   description = "Hetzner API Token"
 }
 
-provider "digitalocean" {
-  token = var.do_token
+provider "hcloud" {
+  token = var.hcloud_token
 }
 
 provider "hetznerdns" {
-  apitoken  = var.hetzner_dns_token
+  apitoken = var.hetzner_dns_token
 }
 
 data "hetznerdns_zone" "bermuda_zone" {
   name = "bermuda.de"
 }
 
-data "digitalocean_ssh_key" "nexus" {
-  name = "deploy-key"
+data "hcloud_network" "development" {
+  name = "jenkins_de"
 }
 
-data "digitalocean_vpc" "vpc" {
-  name = "development"
+data "hcloud_ssh_keys" "ssh_root_keys" {
+  with_selector = var.ssh_root_key_selector
 }
 
-resource "digitalocean_vpc" "development" {
-  name     = "development"
-  region   = "fra1"
-  ip_range = "10.180.0.0/24"
-  count = data.digitalocean_vpc.vpc.id == null ? 1 : 0
-}
+resource "hcloud_server" "nexus_server" {
+  image       = "ubuntu-22.04"
+  name        = "nexus-server"
+  location    = "nbg1"
+  server_type = "cx21"
+  ssh_keys    = data.hcloud_ssh_keys.ssh_root_keys.ssh_keys.*.name
 
-
-resource "digitalocean_droplet" "nexus_server" {
-  image      = "ubuntu-22-10-x64"
-  name       = "nexus-server"
-  region     = "fra1"
-  size       = "s-2vcpu-4gb"
-#  ipv6       = true
-  vpc_uuid   = data.digitalocean_vpc.vpc.id == null ? digitalocean_vpc.development.0.id : data.digitalocean_vpc.vpc.id
-  ssh_keys   = [data.digitalocean_ssh_key.nexus.id]
-  depends_on = [digitalocean_vpc.development]
+  public_net {
+    ipv4_enabled = true
+    ipv6_enabled = true
+  }
 
   lifecycle {
     create_before_destroy = true
@@ -98,7 +92,7 @@ resource "digitalocean_droplet" "nexus_server" {
     ]
 
     connection {
-      host = self.ipv4_address
+      host = self.ipv6_address
       type = "ssh"
       user = "root"
     }
@@ -109,7 +103,7 @@ resource "digitalocean_droplet" "nexus_server" {
     source      = "sudoers"
 
     connection {
-      host = self.ipv4_address
+      host = self.ipv6_address
       type = "ssh"
       user = "root"
     }
@@ -119,14 +113,22 @@ resource "digitalocean_droplet" "nexus_server" {
 resource "hetznerdns_record" "nexus" {
   zone_id = data.hetznerdns_zone.bermuda_zone.id
   name    = "${var.dns_name}."
+  type    = "AAAA"
+  ttl     = 60
+  value   = hcloud_server.nexus_server.ipv6_address
+}
+
+resource "hetznerdns_record" "nexus4" {
+  zone_id = data.hetznerdns_zone.bermuda_zone.id
+  name    = "${var.dns_name}."
   type    = "A"
   ttl     = 60
-  value   = digitalocean_droplet.nexus_server.ipv4_address
+  value   = hcloud_server.nexus_server.ipv4_address
 }
 
 resource "null_resource" "install_nexus" {
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${digitalocean_droplet.nexus_server.ipv4_address},' -e nexus_base_name=${var.dns_name} -e ansible_user=${var.username} main.yml"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i '${hcloud_server.nexus_server.ipv6_address},' -e nexus_base_name=${var.dns_name} -e nexus_ipv4_address=${hcloud_server.nexus_server.ipv4_address} -e nexus_ipv6_address=${hcloud_server.nexus_server.ipv6_address} -e ansible_user=${var.username} main.yml"
   }
-  depends_on = [digitalocean_droplet.nexus_server]
+  depends_on = [hcloud_server.nexus_server]
 }
